@@ -1,6 +1,5 @@
 #include "PCH.h"
 #include "magichandler.h"
-
 using namespace SKSE;
 using namespace SKSE::log;
 using namespace std::literals;
@@ -9,14 +8,11 @@ namespace MSCO::Magic {
 
     //grab spell casting hand item by flag
     static RE::MagicSystem::CastingSource HandToSource(Hand hand) {
-        //the mapping is inverted for hand nodes for whatever reason???
         switch (hand) {
             case Hand::Right:
-                //return RE::MagicSystem::CastingSource::kLeftHand;
                 return RE::MagicSystem::CastingSource::kRightHand;
             case Hand::Left:
                 return RE::MagicSystem::CastingSource::kLeftHand;
-                //return RE::MagicSystem::CastingSource::kRightHand;
             default:
                 log::warn("HandtoSource() default case switch");
                 return RE::MagicSystem::CastingSource::kRightHand;
@@ -29,13 +25,6 @@ namespace MSCO::Magic {
             return nullptr;
         }
         auto& rd = actor->GetActorRuntimeData();
-        //auto idx = static_cast<std::size_t>(hand);
-        // std::size_t idx = (hand == Hand::Right) ? 0 : 1;
-        /*auto spell = rd.selectedSpells[idx];*/
-        /*if (!spell) {
-            log::warn("NO SPELLS FROM rd.selectedSpells[idx]");
-            return nullptr;
-        }*/
         std::size_t idx = static_cast<std::size_t>(hand);
         std::size_t other = idx ^ 1;
 
@@ -43,13 +32,13 @@ namespace MSCO::Magic {
         // try strict hand index first?
         if (rd.selectedSpells[idx]) {
             spell = rd.selectedSpells[idx];
-            log::info("[MSCO] Using {}-hand spell: {}", hand == Hand::Right ? "right" : "left", spell->GetFullName());
+            //log::info("[MSCO] Using {}-hand spell: {}", hand == Hand::Right ? "right" : "left", spell->GetFullName());
         } else if (rd.selectedSpells[other]) {
             //check other hand index
             spell = rd.selectedSpells[other];
-            log::info("[MSCO] {} hand had no spell, using {} hand spell: {}", 
+            /*log::info("[MSCO] {} hand had no spell, using {} hand spell: {}", 
                 hand == Hand::Right ? "right" : "left",
-                hand == Hand::Right ? "left" : "right", spell->GetFullName());
+                hand == Hand::Right ? "left" : "right", spell->GetFullName());*/
         } else {
             log::info("[MSCO] No spells in selectedSpells[0/1]");
             return nullptr;
@@ -69,25 +58,52 @@ namespace MSCO::Magic {
             log::warn("[MSCO] No spell equipped in {} hand", hand == Hand::Right ? "right" : "left");
             return false;
         }
-
+        // fetch the eequipped hand spells
         const auto source = HandToSource(hand);
 
-        auto* caster = actor->GetMagicCaster(source);
+        auto caster = actor->GetMagicCaster(source);
         if (!caster) {
-            log::info("[MSCO] Actor {} has no MagicCaster for source {}", actor->GetName(),
+            log::warn("[MSCO] Actor {} has no MagicCaster for source {}", actor->GetName(),
                          std::to_underlying(source));
             return false;
         }
 
         auto& rd = actor->GetActorRuntimeData();
-        log::info("[MSCO] CastEquippedHand: actor={}, hand={}, sel[0]={}, sel[1]={}", actor->GetName(),
+        /*log::info("[MSCO] CastEquippedHand: actor={}, hand={}, sel[0]={}, sel[1]={}", actor->GetName(),
                   hand == Hand::Right ? "Right" : "Left",
                   rd.selectedSpells[0] ? rd.selectedSpells[0]->GetFullName() : "<none>",
-                  rd.selectedSpells[1] ? rd.selectedSpells[1]->GetFullName() : "<none>");
+                  rd.selectedSpells[1] ? rd.selectedSpells[1]->GetFullName() : "<none>");*/
 
         caster->SetDualCasting(dualCast);
+        ////get the spell cost and check if the actor can actually cast spell
+        float spellCost = spell->CalculateMagickaCost(actor);
+        
+        if (dualCast) {
+            // Apply GSMT (fMagicDualCastingCostMult)
+            constexpr auto dualCostGMST = "fMagicDualCastingCostMult";
+            if (auto* settings = RE::GameSettingCollection::GetSingleton()) {
+                if (auto* gmst = settings->GetSetting(dualCostGMST)) {
+                    spellCost *= gmst->data.f;
+                }
+            }
+        }
+        if (spellCost < 0.0f) {spellCost = 0.0f;} //handle weird negative values
+        //log::info("computed spell cost = {}", spellCost);
+        //float curMagicka = actor->AsActorValueOwner(RE::ActorValue::kMagicka);
+        RE::ActorValueOwner* actorAV = actor->AsActorValueOwner();
+        float curMagicka = actorAV->GetActorValue(RE::ActorValue::kMagicka);
+        if (!actorAV) {
+            log::warn("no actor value");
+            return false;
+        }
+        if (spellCost > 0.0f && curMagicka + 0.1f < spellCost) {
+            //log::info("cannot cast has {} magicka < {} cost", curMagicka, spellCost);
+            return false;
+        }
 
-        //auto& rd = actor->GetActorRuntimeData();
+        if (spellCost > 0.0f) {
+            actorAV->RestoreActorValue(RE::ACTOR_VALUE_MODIFIER::kDamage, RE::ActorValue::kMagicka, -spellCost);
+        }
 
         //self targeted spells should target the caster
         RE::Actor* target = nullptr;
@@ -107,6 +123,9 @@ namespace MSCO::Magic {
         float magnitudeOverride = 0.0f;
 
         //log::info("Casting {} on {} with (dualcasting = {})", spell->fullName, target, dualCast);
+
+        //play sounds
+        caster->PlayReleaseSound(spell);
         caster->CastSpellImmediate(spell,              // spell
                                    false,              // noHitEffectArt
                                    target,            // target
@@ -115,7 +134,7 @@ namespace MSCO::Magic {
                                    magnitudeOverride,  // magnitudeOverride
                                    actor               // cause (blame the caster so XP/aggro work)
         );
-        log::info("SUCESSFULLY CASTED");
+        //log::info("SUCESSFULLY CASTED");
         return true;
     }
 
