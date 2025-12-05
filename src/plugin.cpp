@@ -19,7 +19,7 @@ namespace {
         std::shared_ptr<spdlog::logger> loggerPtr;
 
         if (IsDebuggerPresent()) {
-            //share with debugger
+            // share with debugger
             auto debugLoggerPtr = std::make_shared<spdlog::sinks::msvc_sink_mt>();
             auto fileLoggerPtr = std::make_shared<spdlog::sinks::basic_file_sink_mt>(path->string(), true);
             spdlog::sinks_init_list loggers{std::move(fileLoggerPtr), std::move(debugLoggerPtr)};
@@ -29,7 +29,7 @@ namespace {
             auto fileLoggerPtr = std::make_shared<spdlog::sinks::basic_file_sink_mt>(path->string(), true);
             loggerPtr = std::make_shared<spdlog::logger>("log", std::move(fileLoggerPtr));
         }
-        
+
         loggerPtr->set_level(spdlog::level::info);
         loggerPtr->flush_on(spdlog::level::info);
 
@@ -37,39 +37,26 @@ namespace {
     }
 
     void InitializeEventSink() {
-        auto& animeventHandler = MSCO::AnimationEventHandler::GetSingleton();
-        if (!GetMessagingInterface()->RegisterListener([](MessagingInterface::Message* message) {
+        GetMessagingInterface()->RegisterListener([](MessagingInterface::Message* message) {
             switch (message->type) {
-                /*case SKSE::MessagingInterface::kDataLoaded:
-                    log::info("kDataLoaded");
-                    break;*/
-            case SKSE::MessagingInterface::kPostLoadGame:
-            case SKSE::MessagingInterface::kNewGame: {
-                auto* player = RE::PlayerCharacter::GetSingleton();
-                if (!player) {
-                    log::warn("PlayerCharacter not available in PostLoadGame/NewGame");
+                case SKSE::MessagingInterface::kPostLoadGame:
+                case SKSE::MessagingInterface::kNewGame: {
+                    auto* player = RE::PlayerCharacter::GetSingleton();
+                    if (!player) {
+                        log::warn("PlayerCharacter not available in PostLoadGame/NewGame");
+                        break;
+                    }
+                    bool ok =
+                        player->AddAnimationGraphEventSink(std::addressof(MSCO::AnimationEventHandler::GetSingleton()));
+                    log::info("Registered AnimationEventSink on player? {}", ok);
                     break;
                 }
-
-                //bool ok = player->AddAnimationGraphEventSink(MSCO::AnimationEventHandler::GetSingleton());
-                //bool ok =  RE::BSTEventSink<RE::BSAnimationGraphEvent>AddAnimationGraphEventSink(MSCO::AnimationEventHandler::GetSingleton());
-                /*RE::BSTEventSink<RE::BSAnimationGraphEvent>
-                    AddAnimationGraphEventSink<RE::BSAnimationGraphEvent>(&animeventHandler);*/
-                /*RE::RTTI_BSTEventSource_BSAnimationGraphEvent_::GetSingleton()
-                log::info("Registered AnimationEventSink on player (ok = {})", ok);*/
-                bool ok =
-                    player->AddAnimationGraphEventSink(std::addressof(MSCO::AnimationEventHandler::GetSingleton()));
-                log::info("Registered AnimationEventSink on player (ok = {})", ok);
-                break;
+                default:
+                    break;
             }
-            default:
-                break;
-            }
-        }));
+        });
     }
-
 }
-
 SKSEPluginLoad(const SKSE::LoadInterface* skse) {
     initialize_log();
     auto* plugin = PluginDeclaration::GetSingleton();
@@ -77,10 +64,6 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
     log::info("{} {} is loading...", plugin->GetName(), version);
 
     SKSE::Init(skse);
-    /*SKSE::GetMessagingInterface()->RegisterListener([](SKSE::MessagingInterface::Message* message) {
-        if (message->type == SKSE::MessagingInterface::kDataLoaded)
-            RE::ConsoleLog::GetSingleton()->Print("MSCO.dll Loaded");
-    });*/
 
     log::info("{} has finished loading.", plugin->GetName());
     InitializeEventSink();
