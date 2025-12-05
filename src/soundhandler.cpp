@@ -24,30 +24,33 @@ namespace MSCO::Sound {
         return handle;
 	}
 
-    //get the release sound of the mgef
+    //get some soundid of the mgef we want to fire
     RE::BGSSoundDescriptorForm* GetMGEFSound(
         RE::MagicItem* magic,
-        RE::MagicSystem::SoundID soundID = RE::MagicSystem::SoundID::kRelease) 
+        RE::MagicSystem::SoundID soundID) 
     {
         if (!magic) {
-            log::warn("GetReleaseSound called on null magic item");
+            log::warn("GetMGEFSound called on null magic item");
             return nullptr;
         }
-        if (auto* spell = magic->As<RE::SpellItem>()) {
-            auto& effects = spell->effects;
-            for (auto& effect : effects) {
-                if (!effect || !effect->baseEffect) {
-                    continue; //only grab the sound from the baseffect
-                }
+        auto* spell = magic->As<RE::SpellItem>();
+        if (!spell) {
+            log::warn("auto* spell = magic->As<RE::SpellItem>(); null");
+            return nullptr;
+        }
+        for (auto& effect : spell->effects) {
+            if (!effect || !effect->baseEffect) {
+                continue;  // only grab the sound from the baseffect
+            }
 
-                auto& effectSounds = effect->baseEffect->effectSounds;
-                for (const auto& effectSound : effectSounds) {
-                    if (effectSound.id == RE::MagicSystem::SoundID::kRelease && effectSound.sound) {
-                        return effectSound.sound;
-                    }
+            auto& effectSounds = effect->baseEffect->effectSounds;
+            for (const auto& effectSound : effectSounds) {
+                if (effectSound.id == soundID && effectSound.sound) {
+                    return effectSound.sound;
                 }
             }
         }
+        return nullptr;
     }
 
 }
