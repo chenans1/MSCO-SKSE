@@ -1,6 +1,6 @@
 #include "PCH.h"
 #include "soundhandler.h"
-
+using namespace SKSE;
 using namespace SKSE::log;
 
 namespace MSCO::Sound {
@@ -23,4 +23,31 @@ namespace MSCO::Sound {
         }
         return handle;
 	}
+
+    //get the release sound of the mgef
+    RE::BGSSoundDescriptorForm* GetMGEFSound(
+        RE::MagicItem* magic,
+        RE::MagicSystem::SoundID soundID = RE::MagicSystem::SoundID::kRelease) 
+    {
+        if (!magic) {
+            log::warn("GetReleaseSound called on null magic item");
+            return nullptr;
+        }
+        if (auto* spell = magic->As<RE::SpellItem>()) {
+            auto& effects = spell->effects;
+            for (auto& effect : effects) {
+                if (!effect || !effect->baseEffect) {
+                    continue; //only grab the sound from the baseffect
+                }
+
+                auto& effectSounds = effect->baseEffect->effectSounds;
+                for (const auto& effectSound : effectSounds) {
+                    if (effectSound.id == RE::MagicSystem::SoundID::kRelease && effectSound.sound) {
+                        return effectSound.sound;
+                    }
+                }
+            }
+        }
+    }
+
 }
