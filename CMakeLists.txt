@@ -15,6 +15,7 @@ set(SOURCES
     src/plugin.cpp
     src/animeventhandler.cpp
     src/magichandler.cpp
+    src/soundhandler.cpp
 )
 
 add_commonlibsse_plugin(${PROJECT_NAME} SOURCES ${SOURCES}) # <--- specifies plugin.cpp
@@ -22,7 +23,8 @@ target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23) # <--- use C++23 sta
 target_precompile_headers(${PROJECT_NAME} PRIVATE 
     src/PCH.h
     src/animeventhandler.h
-    src/magichandler.h) # <--- PCH.h is required!
+    src/magichandler.h
+    src/soundhandler.h) # <--- PCH.h is required!
 # When your SKSE .dll is compiled, this will automatically copy the .dll into your mods folder.
 # Only works if you configure DEPLOY_ROOT above (or set the SKYRIM_MODS_FOLDER environment variable)
 if(DEFINED OUTPUT_FOLDER)
