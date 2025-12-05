@@ -3,12 +3,11 @@
 #include "PCH.h"
 
 namespace MSCO {
-    class AnimationEventSink : public RE::BSTEventSink<RE::BSAnimationGraphEvent> {
+    class AnimationEventHandler : public RE::BSTEventSink<RE::BSAnimationGraphEvent> {
     public:
-        //grab the animationeventsink
-        static AnimationEventSink* GetSingleton() {
-            static AnimationEventSink instance;
-            return std::addressof(instance);
+        static AnimationEventHandler& GetSingleton() {
+            static AnimationEventHandler singleton;
+            return singleton;
         }
 
         //graph event notify control so we can actually process things
@@ -17,6 +16,12 @@ namespace MSCO {
             RE::BSTEventSource<RE::BSAnimationGraphEvent>*) override;
 
     private:
-        AnimationEventSink() = default;
+        // constructors and destructors
+        AnimationEventHandler() = default;
+        ~AnimationEventHandler() = default;
+        AnimationEventHandler(const AnimationEventHandler&) = delete;
+        AnimationEventHandler(AnimationEventHandler&&) = delete;
+        AnimationEventHandler& operator=(const AnimationEventHandler&) = delete;
+        AnimationEventHandler& operator=(AnimationEventHandler&&) = delete;
     };
 }

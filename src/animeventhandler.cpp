@@ -4,7 +4,7 @@ using namespace SKSE;
 using namespace SKSE::log;
 using namespace std::literals;
 
-RE::BSEventNotifyControl MSCO::AnimationEventSink::ProcessEvent(
+RE::BSEventNotifyControl MSCO::AnimationEventHandler::ProcessEvent(
     const RE::BSAnimationGraphEvent* a_event,
     RE::BSTEventSource<RE::BSAnimationGraphEvent>*)
 {   
