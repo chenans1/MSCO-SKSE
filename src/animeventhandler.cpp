@@ -8,6 +8,7 @@ RE::BSEventNotifyControl MSCO::AnimationEventSink::ProcessEvent(
     const RE::BSAnimationGraphEvent* a_event,
     RE::BSTEventSource<RE::BSAnimationGraphEvent>*)
 {   
+    //log::info("BSEventNotifyControl Triggered");
     //abort if no event or no event holder
     if (!a_event || !a_event->holder) {
         return RE::BSEventNotifyControl::kContinue;

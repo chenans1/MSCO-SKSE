@@ -5,6 +5,7 @@ using namespace SKSE::stl;
 #include <Windows.h>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/msvc_sink.h>
+#include "animeventhandler.h"
 
 namespace {
     void initialize_log() {
@@ -35,6 +36,30 @@ namespace {
         spdlog::set_default_logger(std::move(loggerPtr));
     }
 
+    void InitializeEventSink() {
+        if (!GetMessagingInterface()->RegisterListener([](MessagingInterface::Message* message) {
+            switch (message->type) {
+                /*case SKSE::MessagingInterface::kDataLoaded:
+                    log::info("kDataLoaded");
+                    break;*/
+            case SKSE::MessagingInterface::kPostLoadGame:
+            case SKSE::MessagingInterface::kNewGame: {
+                auto* player = RE::PlayerCharacter::GetSingleton();
+                if (!player) {
+                    log::warn("PlayerCharacter not available in PostLoadGame/NewGame");
+                    break;
+                }
+
+                bool ok = player->AddAnimationGraphEventSink(MSCO::AnimationEventSink::GetSingleton());
+                log::info("Registered AnimationEventSink on player (ok = {})", ok);
+                break;
+            }
+            default:
+                break;
+            }
+        }));
+    }
+
 }
 
 SKSEPluginLoad(const SKSE::LoadInterface* skse) {
@@ -50,5 +75,6 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
     });*/
 
     log::info("{} has finished loading.", plugin->GetName());
+    InitializeEventSink();
     return true;
 }
