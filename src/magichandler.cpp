@@ -9,27 +9,49 @@ namespace MSCO::Magic {
 
     //grab spell casting hand item by flag
     static RE::MagicSystem::CastingSource HandToSource(Hand hand) {
+        //the mapping is inverted for hand nodes for whatever reason???
         switch (hand) {
+            case Hand::Right:
+                //return RE::MagicSystem::CastingSource::kLeftHand;
+                return RE::MagicSystem::CastingSource::kRightHand;
             case Hand::Left:
                 return RE::MagicSystem::CastingSource::kLeftHand;
-            case Hand::Right:
+                //return RE::MagicSystem::CastingSource::kRightHand;
             default:
+                log::warn("HandtoSource() default case switch");
                 return RE::MagicSystem::CastingSource::kRightHand;
         }
     }
 
     RE::MagicItem* GetEquippedSpellHand(RE::Actor* actor, Hand hand) { 
         if (!actor) {
-            log::info("WARNING: NO ACTOR PASSED TO GetEquippedSpellForHand()");
+            log::warn("null actor passed to GetEquippedSpellForHand()");
             return nullptr;
         }
         auto& rd = actor->GetActorRuntimeData();
+        //auto idx = static_cast<std::size_t>(hand);
+        // std::size_t idx = (hand == Hand::Right) ? 0 : 1;
+        /*auto spell = rd.selectedSpells[idx];*/
+        /*if (!spell) {
+            log::warn("NO SPELLS FROM rd.selectedSpells[idx]");
+            return nullptr;
+        }*/
+        std::size_t idx = static_cast<std::size_t>(hand);
+        std::size_t other = idx ^ 1;
 
-        std::size_t idx = (hand == Hand::Right) ? 0 : 1;
-
-        auto spell = rd.selectedSpells[idx];
-        if (!spell) {
-            log::info("NO SPELLS FROM rd.selectedSpells[idx]");
+        RE::MagicItem* spell = nullptr;
+        // try strict hand index first?
+        if (rd.selectedSpells[idx]) {
+            spell = rd.selectedSpells[idx];
+            log::info("[MSCO] Using {}-hand spell: {}", hand == Hand::Right ? "right" : "left", spell->GetFullName());
+        } else if (rd.selectedSpells[other]) {
+            //check other hand index
+            spell = rd.selectedSpells[other];
+            log::info("[MSCO] {} hand had no spell, using {} hand spell: {}", 
+                hand == Hand::Right ? "right" : "left",
+                hand == Hand::Right ? "left" : "right", spell->GetFullName());
+        } else {
+            log::info("[MSCO] No spells in selectedSpells[0/1]");
             return nullptr;
         }
         return spell->As<RE::MagicItem>();
@@ -37,13 +59,14 @@ namespace MSCO::Magic {
 
     bool CastEquippedHand(RE::Actor* actor, Hand hand, bool dualCast) {
         if (!actor) {
-            log::info("No Actor for CastEquippedHand()");
+            log::warn("No Actor for CastEquippedHand()");
             return false;
         }
         
         auto* spell = GetEquippedSpellHand(actor, hand);
+
         if (!spell) {
-            log::info("[MSCO] No spell equipped in {} hand", hand == Hand::Right ? "right" : "left");
+            log::warn("[MSCO] No spell equipped in {} hand", hand == Hand::Right ? "right" : "left");
             return false;
         }
 
@@ -56,9 +79,15 @@ namespace MSCO::Magic {
             return false;
         }
 
+        auto& rd = actor->GetActorRuntimeData();
+        log::info("[MSCO] CastEquippedHand: actor={}, hand={}, sel[0]={}, sel[1]={}", actor->GetName(),
+                  hand == Hand::Right ? "Right" : "Left",
+                  rd.selectedSpells[0] ? rd.selectedSpells[0]->GetFullName() : "<none>",
+                  rd.selectedSpells[1] ? rd.selectedSpells[1]->GetFullName() : "<none>");
+
         caster->SetDualCasting(dualCast);
 
-        auto& rd = actor->GetActorRuntimeData();
+        //auto& rd = actor->GetActorRuntimeData();
 
         //self targeted spells should target the caster
         RE::Actor* target = nullptr;
@@ -77,7 +106,7 @@ namespace MSCO::Magic {
         float effectiveness = 1.0f;
         float magnitudeOverride = 0.0f;
 
-        //log::info("Casting {} on {} with (dualcasting = {})", spell->GetFullNameLength(), target, dualCast);
+        //log::info("Casting {} on {} with (dualcasting = {})", spell->fullName, target, dualCast);
         caster->CastSpellImmediate(spell,              // spell
                                    false,              // noHitEffectArt
                                    target,            // target
