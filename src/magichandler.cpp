@@ -1,12 +1,14 @@
 #include "PCH.h"
 #include "magichandler.h"
+#include "soundhandler.h"
+
+using namespace RE;
 using namespace SKSE;
 using namespace SKSE::log;
 using namespace std::literals;
 
 namespace MSCO::Magic {
-
-    //grab spell casting hand item by flag
+    //grab spell casting hand source by flag
     static RE::MagicSystem::CastingSource HandToSource(Hand hand) {
         switch (hand) {
             case Hand::Right:
@@ -63,18 +65,12 @@ namespace MSCO::Magic {
 
         auto caster = actor->GetMagicCaster(source);
         if (!caster) {
-            log::warn("[MSCO] Actor {} has no MagicCaster for source {}", actor->GetName(),
-                         std::to_underlying(source));
+            log::warn("[MSCO] Actor {} has no MagicCaster for source {}", actor->GetName(), std::to_underlying(source));
             return false;
         }
-
-        auto& rd = actor->GetActorRuntimeData();
-        /*log::info("[MSCO] CastEquippedHand: actor={}, hand={}, sel[0]={}, sel[1]={}", actor->GetName(),
-                  hand == Hand::Right ? "Right" : "Left",
-                  rd.selectedSpells[0] ? rd.selectedSpells[0]->GetFullName() : "<none>",
-                  rd.selectedSpells[1] ? rd.selectedSpells[1]->GetFullName() : "<none>");*/
-
+        
         caster->SetDualCasting(dualCast);
+
         ////get the spell cost and check if the actor can actually cast spell
         float spellCost = spell->CalculateMagickaCost(actor);
         
@@ -88,16 +84,17 @@ namespace MSCO::Magic {
             }
         }
         if (spellCost < 0.0f) {spellCost = 0.0f;} //handle weird negative values
-        //log::info("computed spell cost = {}", spellCost);
-        //float curMagicka = actor->AsActorValueOwner(RE::ActorValue::kMagicka);
+        
         RE::ActorValueOwner* actorAV = actor->AsActorValueOwner();
-        float curMagicka = actorAV->GetActorValue(RE::ActorValue::kMagicka);
         if (!actorAV) {
             log::warn("no actor value");
             return false;
         }
+
+        float curMagicka = actorAV->GetActorValue(RE::ActorValue::kMagicka);
         if (spellCost > 0.0f && curMagicka + 0.1f < spellCost) {
             //log::info("cannot cast has {} magicka < {} cost", curMagicka, spellCost);
+            //need to implement some hud flashing stuff and play fail sound
             return false;
         }
 
@@ -107,7 +104,7 @@ namespace MSCO::Magic {
 
         //self targeted spells should target the caster
         RE::Actor* target = nullptr;
-
+        auto& rd = actor->GetActorRuntimeData();
         if (spell->GetDelivery() == RE::MagicSystem::Delivery::kSelf) {
             // self-targeted spells: target is the actor
             target = actor;
@@ -124,8 +121,13 @@ namespace MSCO::Magic {
 
         //log::info("Casting {} on {} with (dualcasting = {})", spell->fullName, target, dualCast);
 
-        //play sounds
-        caster->PlayReleaseSound(spell);
+        //only play release sound here. charge and ready should be handled somewhere else.
+        //fetch sound first
+        RE::BGSSoundDescriptorForm* releaseSound = MSCO::Sound::GetMGEFSound(spell);
+        if (releaseSound) {
+            // Fire and forget; your helper already handles nulls/engine quirks
+            MSCO::Sound::play_sound(actor, releaseSound);
+        }
         caster->CastSpellImmediate(spell,              // spell
                                    false,              // noHitEffectArt
                                    target,            // target
@@ -135,6 +137,7 @@ namespace MSCO::Magic {
                                    actor               // cause (blame the caster so XP/aggro work)
         );
         //log::info("SUCESSFULLY CASTED");
+        caster->SetDualCasting(false); //just in case
         return true;
     }
 
