@@ -37,6 +37,7 @@ namespace {
     }
 
     void InitializeEventSink() {
+        auto& animeventHandler = MSCO::AnimationEventHandler::GetSingleton();
         if (!GetMessagingInterface()->RegisterListener([](MessagingInterface::Message* message) {
             switch (message->type) {
                 /*case SKSE::MessagingInterface::kDataLoaded:
@@ -50,7 +51,14 @@ namespace {
                     break;
                 }
 
-                bool ok = player->AddAnimationGraphEventSink(MSCO::AnimationEventSink::GetSingleton());
+                //bool ok = player->AddAnimationGraphEventSink(MSCO::AnimationEventHandler::GetSingleton());
+                //bool ok =  RE::BSTEventSink<RE::BSAnimationGraphEvent>AddAnimationGraphEventSink(MSCO::AnimationEventHandler::GetSingleton());
+                /*RE::BSTEventSink<RE::BSAnimationGraphEvent>
+                    AddAnimationGraphEventSink<RE::BSAnimationGraphEvent>(&animeventHandler);*/
+                /*RE::RTTI_BSTEventSource_BSAnimationGraphEvent_::GetSingleton()
+                log::info("Registered AnimationEventSink on player (ok = {})", ok);*/
+                bool ok =
+                    player->AddAnimationGraphEventSink(std::addressof(MSCO::AnimationEventHandler::GetSingleton()));
                 log::info("Registered AnimationEventSink on player (ok = {})", ok);
                 break;
             }
