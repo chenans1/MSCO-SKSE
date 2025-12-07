@@ -20,7 +20,11 @@ namespace MSCO::Magic {
                 return RE::MagicSystem::CastingSource::kRightHand;
         }
     }
-
+    static void FlashMagickaMeter() {
+        using func_t = void(RE::ActorValue);
+        REL::Relocation<func_t> func{RELOCATION_ID(51907, 52845)};
+        func(RE::ActorValue::kMagicka);
+    }
     RE::MagicItem* GetEquippedSpellHand(RE::Actor* actor, Hand hand) { 
         if (!actor) {
             log::warn("null actor passed to GetEquippedSpellForHand()");
@@ -95,6 +99,7 @@ namespace MSCO::Magic {
         if (spellCost > 0.0f && curMagicka + 0.1f < spellCost) {
             //log::info("cannot cast has {} magicka < {} cost", curMagicka, spellCost);
             //need to implement some hud flashing stuff and play fail sound
+            FlashMagickaMeter();
             return false;
         }
 
