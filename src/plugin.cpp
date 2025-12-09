@@ -6,6 +6,7 @@ using namespace SKSE::stl;
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/msvc_sink.h>
 #include "animeventhandler.h"
+#include "inputhandler.h"
 
 namespace {
     void initialize_log() {
@@ -39,16 +40,31 @@ namespace {
     void InitializeEventSink() {
         GetMessagingInterface()->RegisterListener([](MessagingInterface::Message* message) {
             switch (message->type) {
+                case SKSE::MessagingInterface::kInputLoaded: {
+                    auto* inputMgr = RE::BSInputDeviceManager::GetSingleton();
+                    if (!inputMgr) {
+                        log::warn("BSInputDeviceManager not available in kInputLoaded");
+                        //RE::ConsoleLog::GetSingleton()->Print("BSInputDeviceManager not available in kInputLoaded");
+                        break;
+                    }
+
+                    inputMgr->AddEventSink(&MSCO::InputHandler::GetSingleton());
+                    log::info("Registered MSCO InputEventHandler");
+                    //RE::ConsoleLog::GetSingleton()->Print("Registered MSCO InputEventHandler");
+                    break;
+                }
                 case SKSE::MessagingInterface::kPostLoadGame:
                 case SKSE::MessagingInterface::kNewGame: {
                     auto* player = RE::PlayerCharacter::GetSingleton();
                     if (!player) {
                         log::warn("PlayerCharacter not available in PostLoadGame/NewGame");
+                        //RE::ConsoleLog::GetSingleton()->Print("PlayerCharacter not available in PostLoadGame/NewGame");
                         break;
                     }
                     bool ok =
                         player->AddAnimationGraphEventSink(std::addressof(MSCO::AnimationEventHandler::GetSingleton()));
                     log::info("Registered AnimationEventSink on player? {}", ok);
+                    RE::ConsoleLog::GetSingleton()->Print("Registered AnimationEventSink on player? {}", ok);
                     break;
                 }
                 default:
@@ -67,5 +83,7 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
 
     log::info("{} has finished loading.", plugin->GetName());
     InitializeEventSink();
+    //initialize_log();
+    //RE::ConsoleLog::GetSingleton()->Print("MSCO Loaded");
     return true;
 }
