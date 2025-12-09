@@ -99,12 +99,14 @@ namespace MSCO::Magic {
         if (spellCost > 0.0f && curMagicka + 0.1f < spellCost) {
             //log::info("cannot cast has {} magicka < {} cost", curMagicka, spellCost);
             //need to implement some hud flashing stuff and play fail sound
-            FlashMagickaMeter();
+            RE::HUDMenu::FlashMeter(RE::ActorValue::kMagicka);
+            //FlashMagickaMeter();
             return false;
         }
 
         if (spellCost > 0.0f) {
-            actorAV->RestoreActorValue(RE::ACTOR_VALUE_MODIFIER::kDamage, RE::ActorValue::kMagicka, -spellCost);
+           /* actorAV->RestoreActorValue(RE::ACTOR_VALUE_MODIFIER::kDamage, RE::ActorValue::kMagicka, -spellCost);*/
+            actorAV->DamageActorValue(RE::ActorValue::kMagicka, spellCost);
         }
 
         //self targeted spells should target the caster
@@ -143,6 +145,7 @@ namespace MSCO::Magic {
         );
         //log::info("SUCESSFULLY CASTED");
         caster->SetDualCasting(false); //just in case
+        RE::ConsoleLog::GetSingleton()->Print("Registered AnimationEventSink on player? {}", spell);
         return true;
     }
 
