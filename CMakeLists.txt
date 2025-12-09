@@ -3,13 +3,15 @@
 cmake_minimum_required(VERSION 3.21)
 
 # Set your project name. This will be the name of your SKSE .dll file.
-project(MSCO VERSION 0.0.1 LANGUAGES CXX)
+project(MSCO VERSION 0.1.1 LANGUAGES CXX)
+include("C:/SKSEdev/repos/CommonLibVR-NG/cmake/CommonLibSSE.cmake")
+set(BUILD_TESTS OFF CACHE BOOL "Build unit tests for CommonLibVR." FORCE)
+set(ENABLE_SKYRIM_VR OFF CACHE BOOL "" FORCE)
 
 
 set(OUTPUT_FOLDER "D:/Skyrim SE MO2/mods/MSCO")
-
 # Setup your SKSE plugin as an SKSE plugin!
-find_package(CommonLibSSE CONFIG REQUIRED)
+# find_package(CommonLibSSE CONFIG REQUIRED)
 
 set(SOURCES
     src/plugin.cpp
@@ -18,14 +20,19 @@ set(SOURCES
     src/soundhandler.cpp
     src/inputhandler.cpp)
 
+# add_subdirectory("C:/SKSEdev/repos/template_test/extern/CommonLibVR-NG")
+add_subdirectory(extern/CommonLibVR-ng)
 add_commonlibsse_plugin(${PROJECT_NAME} SOURCES ${SOURCES}) # <--- specifies plugin.cpp
+
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23) # <--- use C++23 standard
 target_precompile_headers(${PROJECT_NAME} PRIVATE 
     src/PCH.h
     src/animeventhandler.h
     src/magichandler.h
     src/soundhandler.h
-    src/inputhandler.h) # <--- PCH.h is required!
+    src/inputhandler.h) 
+    
+
 # When your SKSE .dll is compiled, this will automatically copy the .dll into your mods folder.
 # Only works if you configure DEPLOY_ROOT above (or set the SKYRIM_MODS_FOLDER environment variable)
 if(DEFINED OUTPUT_FOLDER)
