@@ -28,6 +28,7 @@ RE::BSEventNotifyControl MSCO::AnimationEventHandler::ProcessEvent(
     constexpr auto kLeftTag = "lh_msco_cast"sv;
     constexpr auto kRightTag = "rh_msco_cast"sv;
     constexpr auto kDualTag = "dh_msco_cast"sv;
+    constexpr auto kDualTag_right = "dh_msco_cast_right"sv;
 
     if (tag == kLeftTag) {
         log::info("{} has Left Casted.", mutableActor->GetName());
@@ -41,6 +42,9 @@ RE::BSEventNotifyControl MSCO::AnimationEventHandler::ProcessEvent(
         log::info("{} has Dual Casted.", mutableActor->GetName());
         //CastEquippedHand(actor, /*left*/ true, /*dual*/ true);
         MSCO::Magic::CastEquippedHand(mutableActor, MSCO::Magic::Hand::Left, true);
+    } else if (tag == kDualTag_right) {
+        log::info("{} has Right Dual Casted.", mutableActor->GetName());
+        MSCO::Magic::CastEquippedHand(mutableActor, MSCO::Magic::Hand::Right, true);
     }
 
     return RE::BSEventNotifyControl::kContinue;
