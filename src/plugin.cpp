@@ -7,6 +7,7 @@ using namespace SKSE::stl;
 #include <spdlog/sinks/msvc_sink.h>
 #include "animeventhandler.h"
 #include "inputhandler.h"
+#include "attackhandler.h"
 
 namespace {
     void initialize_log() {
@@ -64,7 +65,7 @@ namespace {
                     bool ok =
                         player->AddAnimationGraphEventSink(std::addressof(MSCO::AnimationEventHandler::GetSingleton()));
                     log::info("Registered AnimationEventSink on player? {}", ok);
-                    RE::ConsoleLog::GetSingleton()->Print("Registered AnimationEventSink on player? {}", ok);
+                    //RE::ConsoleLog::GetSingleton()->Print("Registered AnimationEventSink on player? {}", ok);
                     break;
                 }
                 default:
@@ -80,10 +81,10 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
     log::info("{} {} is loading...", plugin->GetName(), version);
 
     SKSE::Init(skse);
-
-    log::info("{} has finished loading.", plugin->GetName());
+    MSCO::AttackBlockHook::Install();
+    log::info("Installed AttackBlockHandler::ProcessButton hook");
+    //log::info("{} has finished loading.", plugin->GetName());
     InitializeEventSink();
     //initialize_log();
-    //RE::ConsoleLog::GetSingleton()->Print("MSCO Loaded");
     return true;
 }
