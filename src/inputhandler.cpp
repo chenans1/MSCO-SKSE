@@ -19,7 +19,7 @@ namespace MSCO {
 
         if (player->IsOnMount()) {return false;}
 
-        bool inJump = false;
+        //bool inJump = false;
         //if (player->GetGraphVariableBool("bInJumpState", inJump) && inJump) {return false;}
         auto* actorState = player->AsActorState();
         //no casting if we do not have drawn weapons. Technically, the behavior patch prevents this anyways
@@ -64,10 +64,8 @@ namespace MSCO {
                 continue;
             }
 
-            /*if (!button->IsDown()) {
-                continue;
-            }*/
-            if (!(button->IsDown() && button->HeldDuration() <= 0.0f)) continue;
+            /*if (!button->IsDown()) { continue; }*/
+            if (!(button->IsDown() && button->HeldDuration() == 0.0f)) continue;
 
             //map by user-event name
             const auto& userEvent = button->QUserEvent();
@@ -96,33 +94,37 @@ namespace MSCO {
         const bool hasLeftSpell = leftSpell != nullptr;
         const bool hasRightSpell = rightSpell != nullptr;
 
-        // early break on both left/right not being spell
-
+        // early     on both left/right not being spell
         if (!hasLeftSpell && !hasRightSpell) {
             return RE::BSEventNotifyControl::kContinue;
         }
-
-        const bool canDualCandidate = rightPressed && leftPressed;
-        bool dualSent = false;
-        // i don't think the way the event handler works it can reliably check
-        // favor dual cast checking for more reliability
-        if (canDualCandidate) {
-            SendAnimEvent(player, "MSCO_input_dual"sv);
-            dualSent = true;
-            RE::ConsoleLog::GetSingleton()->Print("SENT MSCO_input_dual");
+        
+        bool willDualCast = false;
+        if (!MSCO::Magic::CanCastSpell(
+            static_cast<RE::Actor*>(player),
+            leftSpell, 
+            rightSpell, 
+            leftPressed, 
+            rightPressed, 
+            willDualCast
+        )) {
+            return RE::BSEventNotifyControl::kStop;
+            //return RE::BSEventNotifyControl::kContinue;
         }
 
-        if (!dualSent) {
+        if (willDualCast) {
+            SendAnimEvent(player, "MSCO_input_dual"sv);
+        } else {
             if (leftPressed && hasLeftSpell) {
                 SendAnimEvent(player, "MSCO_input_left"sv);
-                // RE::ConsoleLog::GetSingleton()->Print("SENT MSCO_input_left");
+                return RE::BSEventNotifyControl::kStop;
             }
-
             if (rightPressed && hasRightSpell) {
                 SendAnimEvent(player, "MSCO_input_right"sv);
-                // RE::ConsoleLog::GetSingleton()->Print("SENT MSCO_input_right");
+                return RE::BSEventNotifyControl::kStop;
             }
         }
+        //return RE::BSEventNotifyControl::kStop;
         return RE::BSEventNotifyControl::kContinue;
     }   
 }

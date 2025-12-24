@@ -9,7 +9,7 @@ using namespace std::literals;
 
 namespace MSCO::Magic {
     //grab spell casting hand source by flag
-    static RE::MagicSystem::CastingSource HandToSource(Hand hand) {
+    RE::MagicSystem::CastingSource HandToSource(Hand hand) {
         switch (hand) {
             case Hand::Right:
                 return RE::MagicSystem::CastingSource::kRightHand;
@@ -46,6 +46,63 @@ namespace MSCO::Magic {
             return nullptr;
         }
         return spell->As<RE::MagicItem>();
+    }
+
+    bool CanCastSpell(
+        RE::Actor* actor, 
+        RE::MagicItem* leftSpell,
+        RE::MagicItem* rightSpell, 
+        bool leftPressed,
+        bool rightPressed,
+        bool& outDualCast) 
+    {
+        if (!actor) {
+            log::warn("CanCastForInput(): null actor");
+            return false;
+        }
+
+        auto* avOwner = actor->AsActorValueOwner();
+        if (!avOwner) {
+            log::warn("CanCastForInput(): actor has no ActorValueOwner");
+            return false;
+        }
+
+         float curMagicka = avOwner->GetActorValue(RE::ActorValue::kMagicka);
+
+         auto get_cost = [actor](RE::MagicItem* spell) -> float {
+             if (!spell) {
+                 return 0.0f;
+             }
+             float cost = spell->CalculateMagickaCost(actor);
+             if (cost < 0.0f) {
+                 cost = 0.0f;
+             }
+             return cost;
+         };
+
+         float leftCost = (leftPressed && leftSpell) ? get_cost(leftSpell) : 0.0f;
+         float rightCost = (rightPressed && rightSpell) ? get_cost(rightSpell) : 0.0f;
+
+         const bool bothPressed = leftPressed && rightPressed;
+         const bool bothHaveSpell = leftSpell && rightSpell;
+         const bool sameSpell =
+             bothHaveSpell && (leftSpell == rightSpell || leftSpell->GetFormID() == rightSpell->GetFormID());
+         bool noDualCastMods = leftSpell && leftSpell->GetNoDualCastModifications();
+         bool supportsDualCast = leftSpell && !noDualCastMods;
+         if (bothPressed && sameSpell && supportsDualCast) {
+             float baseCost = leftCost;
+             float dualMult = 1.0f;
+             if (auto* settings = RE::GameSettingCollection::GetSingleton()) {
+                 if (auto* gmst = settings->GetSetting("fMagicDualCastingCostMult")) dualMult = gmst->data.f;
+             }
+             float dualCost = std::max(0.0f, baseCost * dualMult);
+             if (dualCost > 0.0f && curMagicka + 0.1f < dualCost) {
+                 return false;  // cannot dual cast
+             }
+             outDualCast = true;
+             return true;
+         }
+        return true;
     }
 
     bool CastEquippedHand(RE::Actor* actor, Hand hand, bool dualCast) {
@@ -137,10 +194,9 @@ namespace MSCO::Magic {
                                    magnitudeOverride,  // magnitudeOverride
                                    actor               // cause (blame the caster so XP/aggro work)
         );
-
+        //caster->SpellCast();
         //log::info("SUCESSFULLY CASTED");
         caster->SetDualCasting(false); //just in case
         return true;
     }
-
 }

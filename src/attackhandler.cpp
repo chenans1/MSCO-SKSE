@@ -36,7 +36,7 @@ namespace MSCO {
                         swallow = (ok && lock != 0);
                     }
 
-                    if (swallow) {
+                    if (swallow) {  
                         log::info("[ABHook] Swallowed {}", s);
                         return;
                     }

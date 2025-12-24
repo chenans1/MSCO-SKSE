@@ -12,13 +12,13 @@ RE::BSEventNotifyControl MSCO::AnimationEventHandler::ProcessEvent(
     //log::info("BSEventNotifyControl Triggered");
     //abort if no event or no event holder
     if (!a_event || !a_event->holder) {
-        log::info("WARNING: NO ANIM EVENT PASSED");
+        log::warn("WARNING: NO ANIM EVENT PASSED");
         return RE::BSEventNotifyControl::kContinue;
     }
     //abort if no actor
     auto* actor = a_event->holder->As<RE::Actor>();
     if (!actor) {
-        log::info("WARNING: NO ACTOR FOR FOR EVENT");
+        log::warn("WARNING: NO ACTOR FOR FOR EVENT");
         return RE::BSEventNotifyControl::kContinue;
     }
 

@@ -1,3 +1,5 @@
+#pragma once
+
 #include <cstring>
 #include <RE/A/AttackBlockHandler.h>
 #include <RE/B/ButtonEvent.h>
