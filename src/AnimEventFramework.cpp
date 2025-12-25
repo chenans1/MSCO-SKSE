@@ -53,13 +53,17 @@ namespace MSCO {
             log::info("[AnimHook] sample tag='{}'", a_event->tag.c_str());
         }
         //log::info("HandleEvent Called");
-        //const std::string_view tag{a_event->tag.c_str()};
         MSCO::Magic::Hand firingHand{};
         const auto& tag = a_event->tag;
-        //not one of the fire and forget animation events. 
-        if (!IsFnFStartEvent(tag, firingHand)) {
+        
+        if (!IsBeginCastEvent(tag, firingHand)) {
             return;
         }
+
+        if (!IsHandFireAndForget(actor, firingHand)) {
+            return;
+        }
+
         log::info("Detected Fire and Forget Anim event");
         const auto otherHand =
             (firingHand == MSCO::Magic::Hand::Right) 
@@ -76,21 +80,35 @@ namespace MSCO {
             log::info("Otherhand is not concentration");
             return;
         }
-        InterruptHand(actor, otherHand);
+        const auto otherSource = MSCO::Magic::HandToSource(otherHand);
+        if (auto* caster = actor->GetMagicCaster(otherSource)) {
+            caster->InterruptCast(false);
+        }
+        //InterruptHand(actor, otherHand);
 
     }
 
-    //sets the other firing hand and checks
-    bool AnimEventHook::IsFnFStartEvent(const RE::BSFixedString& tag, MSCO::Magic::Hand& outFiringHand) {
-        if (tag == "MRh_SpellAimedStart"sv || tag == "MRh_SpellSelfStart"sv) {
-            outFiringHand = MSCO::Magic::Hand::Right;
+    //the mrh_spellaimedstart type specific events do not appear in the event sinks - they are notifys, do workaround instead:
+    bool AnimEventHook::IsBeginCastEvent(const RE::BSFixedString& tag, MSCO::Magic::Hand& outHand) {
+        if (tag == "BeginCastRight"sv) {
+            outHand = MSCO::Magic::Hand::Right;
             return true;
         }
-        if (tag == "MLh_SpellAimedStart"sv || tag == "MLh_SpellSelfStart"sv) {
-            outFiringHand = MSCO::Magic::Hand::Left;
+        if (tag == "BeginCastLeft"sv) {
+            outHand = MSCO::Magic::Hand::Left;
             return true;
         }
         return false;
+    }
+
+    //check for fire and forget spell type.
+    bool AnimEventHook::IsHandFireAndForget(RE::Actor* actor, MSCO::Magic::Hand hand) {
+        auto* item = MSCO::Magic::GetEquippedSpellHand(actor, hand);
+        auto* spell = item ? item->As<RE::SpellItem>() : nullptr;
+        if (!spell) {
+            return false;
+        }
+        return spell->GetCastingType() == RE::MagicSystem::CastingType::kFireAndForget;
     }
 
     //interrupts the spell at specified hand source. 
@@ -102,4 +120,14 @@ namespace MSCO {
         }
         //do nothing if else.
     }
+
+    //grab the input bool
+    static bool GetGraphBool(RE::Actor* actor, const char* name, bool defaultValue = false) {
+        bool v = defaultValue;
+        if (actor) {
+            actor->GetGraphVariableBool(name, v);
+        }
+        return v;
+    }
+
 }
