@@ -96,7 +96,7 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
     MSCO::AttackBlockHook::Install();
     log::info("Installed AttackBlockHandler::ProcessButton hook");
     //log::info("{} has finished loading.", plugin->GetName());
-    InitializeEventSink();
+    //InitializeEventSink();
     //initialize_log();
     return true;
 }
