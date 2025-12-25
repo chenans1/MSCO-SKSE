@@ -25,9 +25,9 @@ namespace MSCO {
         //main logic function, detects FNF event, interrupts other hand if applicable.
         static void HandleEvent(RE::BSAnimationGraphEvent* a_event);
 
-        static bool IsFnFStartEvent(std::string_view tag, MSCO::Magic::Hand& outFiringHand);
-        static bool OtherHandIsConcentration(RE::Actor* actor, MSCO::Magic::Hand firingHand);
-        static void InterruptOtherHand(RE::Actor* actor, MSCO::Magic::Hand firingHand);
+        static bool IsFnFStartEvent(const RE::BSFixedString& tag, MSCO::Magic::Hand& outFiringHand);
+        //static bool OtherHandIsConcentration(RE::Actor* actor, MSCO::Magic::Hand firingHand);
+        static void InterruptHand(RE::Actor* actor, MSCO::Magic::Hand hand);
 
         // store the original functions, so that we don't break other mods.
         static inline REL::Relocation<decltype(ProcessEvent_NPC)> _originalNPC;

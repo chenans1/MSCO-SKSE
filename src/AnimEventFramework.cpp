@@ -40,16 +40,48 @@ namespace MSCO {
             log::warn("HandleEvent called with no event");
             return;
         }
-
-        auto* actor = a_event->holder->As<RE::Actor>();
+        auto* holder = const_cast<RE::TESObjectREFR*>(a_event->holder);
+        auto* actor = holder ? holder->As<RE::Actor>() : nullptr;
+        //auto* actor = a_event->holder->As<RE::Actor>();
         if (!actor) {
             log::warn("HandleEvent called with no actor");
             return;
         }
+
+        // Debug: sample tags from player only
+        if (actor->IsPlayerRef()) {
+            log::info("[AnimHook] sample tag='{}'", a_event->tag.c_str());
+        }
+        //log::info("HandleEvent Called");
+        //const std::string_view tag{a_event->tag.c_str()};
+        MSCO::Magic::Hand firingHand{};
+        const auto& tag = a_event->tag;
+        //not one of the fire and forget animation events. 
+        if (!IsFnFStartEvent(tag, firingHand)) {
+            return;
+        }
+        log::info("Detected Fire and Forget Anim event");
+        const auto otherHand =
+            (firingHand == MSCO::Magic::Hand::Right) 
+            ? MSCO::Magic::Hand::Left : MSCO::Magic::Hand::Right;
+
+        auto* otherItem = MSCO::Magic::GetEquippedSpellHand(actor, otherHand);
+        auto* otherSpell = otherItem ? otherItem->As<RE::SpellItem>() : nullptr;
+        if (!otherSpell) {
+            log::info("No otherSpell");
+            return;
+        }
+
+        if (otherSpell->GetCastingType() != RE::MagicSystem::CastingType::kConcentration) {
+            log::info("Otherhand is not concentration");
+            return;
+        }
+        InterruptHand(actor, otherHand);
+
     }
 
     //sets the other firing hand and checks
-    bool AnimEventHook::IsFnFStartEvent(std::string_view tag, MSCO::Magic::Hand& outFiringHand) {
+    bool AnimEventHook::IsFnFStartEvent(const RE::BSFixedString& tag, MSCO::Magic::Hand& outFiringHand) {
         if (tag == "MRh_SpellAimedStart"sv || tag == "MRh_SpellSelfStart"sv) {
             outFiringHand = MSCO::Magic::Hand::Right;
             return true;
@@ -61,9 +93,13 @@ namespace MSCO {
         return false;
     }
 
-    //interrupts the spell at source
-    void AnimEventHook::InterruptOtherHand(RE::Actor* actor, MSCO::Magic::Hand firingHand) { 
-        const auto otherHand = (firingHand == MSCO::Magic::Hand::Right) 
-            ? MSCO::Magic::Hand::Left : MSCO::Magic::Hand::Right;
+    //interrupts the spell at specified hand source. 
+    void AnimEventHook::InterruptHand(RE::Actor* actor, MSCO::Magic::Hand hand) { 
+        const auto otherSource = MSCO::Magic::HandToSource(hand);
+        if (auto* caster = actor->GetMagicCaster(otherSource); caster) {
+            caster->InterruptCast(false);
+            log::info("InterruptedCast");
+        }
+        //do nothing if else.
     }
 }

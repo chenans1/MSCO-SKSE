@@ -8,6 +8,7 @@ using namespace SKSE::stl;
 #include "animeventhandler.h"
 #include "inputhandler.h"
 #include "attackhandler.h"
+#include "AnimEventFramework.h"
 
 namespace {
     void initialize_log() {
@@ -95,8 +96,8 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
     SKSE::Init(skse);
     MSCO::AttackBlockHook::Install();
     log::info("Installed AttackBlockHandler::ProcessButton hook");
-    //log::info("{} has finished loading.", plugin->GetName());
-    //InitializeEventSink();
-    //initialize_log();
+    MSCO::AnimEventHook::Install();
+
+    log::info("{} has finished loading.", plugin->GetName());
     return true;
 }
