@@ -35,6 +35,7 @@ namespace MSCO {
         return _originalPC(a_sink, a_event, a_eventSource);
     }
 
+    //interrupts vanilla conc casting on transition
     void AnimEventHook::HandleEvent(RE::BSAnimationGraphEvent* a_event) {
         if (!a_event || !a_event->holder || !a_event->tag.data()) {
             log::warn("HandleEvent called with no event");
@@ -42,50 +43,56 @@ namespace MSCO {
         }
         auto* holder = const_cast<RE::TESObjectREFR*>(a_event->holder);
         auto* actor = holder ? holder->As<RE::Actor>() : nullptr;
-        //auto* actor = a_event->holder->As<RE::Actor>();
+
         if (!actor) {
             log::warn("HandleEvent called with no actor");
             return;
         }
-
-        // Debug: sample tags from player only
-        if (actor->IsPlayerRef()) {
-            log::info("[AnimHook] sample tag='{}'", a_event->tag.c_str());
-        }
+        
         //log::info("HandleEvent Called");
-        MSCO::Magic::Hand firingHand{};
+        /*MSCO::Magic::Hand firingHand{};
         const auto& tag = a_event->tag;
         
         if (!IsBeginCastEvent(tag, firingHand)) {
             return;
         }
 
-        if (!IsHandFireAndForget(actor, firingHand)) {
+        const bool castingMSCO = GetGraphBool(actor, "bCastingMSCO", false);
+        if (!castingMSCO) {
             return;
         }
+        log::info("bCastingMSCO Detected");
+        const bool castingVanilla = GetGraphBool(actor, "bCastingVanilla", false);
+        if (!castingVanilla) {
+            return;
+        }*/
+        //log::info("Detected Fire and Forget Anim event");
 
-        log::info("Detected Fire and Forget Anim event");
-        const auto otherHand =
+        //const bool castingVanilla = GetGraphBool(actor, "bCastingVanilla", false);
+        //if (!castingVanilla) {
+        //    return;
+        //}
+        
+        //const auto otherHand = OtherHand(firingHand);
+       /* const auto otherHand =
             (firingHand == MSCO::Magic::Hand::Right) 
             ? MSCO::Magic::Hand::Left : MSCO::Magic::Hand::Right;
-
-        auto* otherItem = MSCO::Magic::GetEquippedSpellHand(actor, otherHand);
-        auto* otherSpell = otherItem ? otherItem->As<RE::SpellItem>() : nullptr;
-        if (!otherSpell) {
-            log::info("No otherSpell");
-            return;
-        }
-
-        if (otherSpell->GetCastingType() != RE::MagicSystem::CastingType::kConcentration) {
-            log::info("Otherhand is not concentration");
-            return;
-        }
-        const auto otherSource = MSCO::Magic::HandToSource(otherHand);
-        if (auto* caster = actor->GetMagicCaster(otherSource)) {
+        const auto otherSource = MSCO::Magic::HandToSource(otherHand);*/
+        /*if (auto* caster = actor->GetMagicCaster(otherSource)) {
             caster->InterruptCast(false);
+        }*/
+        const auto& tag = a_event->tag;
+        if (tag == "EndLeftVanilla"sv) {
+            auto* caster = actor->GetMagicCaster(RE::MagicSystem::CastingSource::kLeftHand);
+            caster->InterruptCast(false);
+            log::info("Interrupted Left");
         }
-        //InterruptHand(actor, otherHand);
 
+        if (tag == "EndRightVanilla"sv) {
+            auto* caster = actor->GetMagicCaster(RE::MagicSystem::CastingSource::kRightHand);
+            caster->InterruptCast(false);
+            log::info("Interrupted Right");
+        }
     }
 
     //the mrh_spellaimedstart type specific events do not appear in the event sinks - they are notifys, do workaround instead:
@@ -96,6 +103,7 @@ namespace MSCO {
         }
         if (tag == "BeginCastLeft"sv) {
             outHand = MSCO::Magic::Hand::Left;
+
             return true;
         }
         return false;
@@ -113,8 +121,8 @@ namespace MSCO {
 
     //interrupts the spell at specified hand source. 
     void AnimEventHook::InterruptHand(RE::Actor* actor, MSCO::Magic::Hand hand) { 
-        const auto otherSource = MSCO::Magic::HandToSource(hand);
-        if (auto* caster = actor->GetMagicCaster(otherSource); caster) {
+        const auto source = MSCO::Magic::HandToSource(hand);
+        if (auto* caster = actor->GetMagicCaster(source); caster) {
             caster->InterruptCast(false);
             log::info("InterruptedCast");
         }
@@ -122,12 +130,21 @@ namespace MSCO {
     }
 
     //grab the input bool
-    static bool GetGraphBool(RE::Actor* actor, const char* name, bool defaultValue = false) {
+    bool AnimEventHook::GetGraphBool(RE::Actor* actor, const char* name, bool defaultValue) {
         bool v = defaultValue;
         if (actor) {
             actor->GetGraphVariableBool(name, v);
+            //actor->GetGraphVariableBool(name, v);
         }
         return v;
-    }
+        /*bool value = defaultValue;
+        if (!actor) {
+            return defaultValue;
+        }
 
+        const bool ok = actor->GetGraphVariableBool(name, value);
+        log::info("GraphBool '{}' ok={} value={}", name, ok, value);
+        return ok;
+        return ok ? value : defaultValue;*/
+    }
 }
