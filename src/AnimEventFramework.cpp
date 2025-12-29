@@ -24,7 +24,12 @@ namespace MSCO {
         RE::BSAnimationGraphEvent* a_event,
         RE::BSTEventSource<RE::BSAnimationGraphEvent>* a_eventSource
     ) {
-        HandleEvent(a_event);
+        
+        if (HandleEvent(a_event)) {
+            log::info("HandleEvent Blocked ProcessEvent()");
+            return RE::BSEventNotifyControl::kContinue;
+        }
+        //HandleEvent(a_event);
         return _originalNPC(a_sink, a_event, a_eventSource);
     }
 
@@ -36,17 +41,17 @@ namespace MSCO {
     }
 
     //interrupts vanilla conc casting on transition
-    void AnimEventHook::HandleEvent(RE::BSAnimationGraphEvent* a_event) {
+    bool AnimEventHook::HandleEvent(RE::BSAnimationGraphEvent* a_event) {
         if (!a_event || !a_event->holder || !a_event->tag.data()) {
             //log::warn("HandleEvent called with no event");
-            return;
+            return false;
         }
         auto* holder = const_cast<RE::TESObjectREFR*>(a_event->holder);
         auto* actor = holder ? holder->As<RE::Actor>() : nullptr;
 
         if (!actor) {
             //log::warn("HandleEvent called with no actor");
-            return;
+            return false;
         }
         
         //log::info("HandleEvent Called");
@@ -55,17 +60,32 @@ namespace MSCO {
         //on MCO_WinOpen Allow for the casting?
         if (tag == "MCO_WinOpen"sv) {
             actor->NotifyAnimationGraph("CastOkStart"sv);
-            return;
+            return false;
         }
 
         if (tag == "MCO_PowerWinOpen"sv) {
             actor->NotifyAnimationGraph("CastOkStart"sv);
-            return;
+            return false;
         }
 
+        //test: block NPC processEvent on begin cast if lock.
+        MSCO::Magic::Hand beginHand{};
+        if (IsBeginCastEvent(tag, beginHand)) {
+            const char* lockName = (beginHand == MSCO::Magic::Hand::Right) ? "MSCO_right_lock" : "MSCO_left_lock";
+            std::int32_t lock = 0;
+            const bool ok = actor->GetGraphVariableInt(lockName, lock);
+
+            if (ok && lock != 0) {
+                return true;  //swallow the BeginCastLeft/Right Event
+            }
+
+        }
+
+
+        //interrupt conc spell in other hand if applicable
         MSCO::Magic::Hand firingHand{};
         if (!IsMSCOEvent(tag, firingHand)) {
-            return;
+            return false;
         }
         //log::info("msco casting event detected");
         const auto otherHand =
@@ -77,7 +97,7 @@ namespace MSCO {
         otherItem = GetCurrentlyCastingMagicItem(actor, otherHand);
         if (!otherItem) {
             //log::info("no other item for GetCurrentlyCastingMagicItem()");
-            return;
+            return false;
         }
         //log::info("detected magic item");
 
@@ -85,6 +105,8 @@ namespace MSCO {
             InterruptHand(actor, otherHand);
             log::info("Interrupted Concentration Casting");
         }
+
+        return false;
 
     }
 
