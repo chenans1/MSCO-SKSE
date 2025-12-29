@@ -50,9 +50,20 @@ namespace MSCO {
         }
         
         //log::info("HandleEvent Called");
-        MSCO::Magic::Hand firingHand{};
         const auto& tag = a_event->tag;
-        
+
+        //on MCO_WinOpen Allow for the casting?
+        if (tag == "MCO_WinOpen"sv) {
+            actor->NotifyAnimationGraph("CastOkStart"sv);
+            return;
+        }
+
+        if (tag == "MCO_PowerWinOpen"sv) {
+            actor->NotifyAnimationGraph("CastOkStart"sv);
+            return;
+        }
+
+        MSCO::Magic::Hand firingHand{};
         if (!IsMSCOEvent(tag, firingHand)) {
             return;
         }
@@ -91,6 +102,7 @@ namespace MSCO {
     }
 
     bool AnimEventHook::IsMSCOEvent(const RE::BSFixedString& tag, MSCO::Magic::Hand& outHand) {
+
         if (tag == "RightMSCOStart"sv) {
             outHand = MSCO::Magic::Hand::Right;
             return true;
