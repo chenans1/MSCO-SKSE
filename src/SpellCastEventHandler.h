@@ -13,5 +13,13 @@ namespace MSCO {
         RE::BSEventNotifyControl ProcessEvent(
             const RE::TESSpellCastEvent* a_event,
             RE::BSTEventSource<RE::TESSpellCastEvent>* a_eventSource) override;
+
+        /*void RegisterSpellCastHandler() {
+            auto* eventSource = RE::ScriptEventSourceHolder::GetSingleton();
+            if (eventSource) {
+                eventSource->AddEventSink(SpellCastEventHandler::GetSingleton());
+                log::info("Registered SpellCastEventHandler");
+            }
+        }*/
     };
 }
