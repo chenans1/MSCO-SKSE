@@ -9,6 +9,7 @@ using namespace SKSE::stl;
 #include "inputhandler.h"
 #include "attackhandler.h"
 #include "AnimEventFramework.h"
+#include "SpellCastEventHandler.h"
 
 namespace {
     void initialize_log() {
@@ -56,16 +57,23 @@ namespace {
                 //    break;
                 //}
                 case SKSE::MessagingInterface::kPostLoadGame: {
-                    auto* player = RE::PlayerCharacter::GetSingleton();
-                    if (!player) {
-                        log::warn("PlayerCharacter not available in PostLoadGame/NewGame");
-                        // RE::ConsoleLog::GetSingleton()->Print("PlayerCharacter not available in
-                        // PostLoadGame/NewGame");
-                        break;
-                    } bool ok =
-                        player->AddAnimationGraphEventSink(std::addressof(MSCO::AnimationEventHandler::GetSingleton()));
-                    log::info("Registered AnimationEventSink on player? {}", ok);
-                    // RE::ConsoleLog::GetSingleton()->Print("Registered AnimationEventSink on player? {}", ok);
+                    //auto* player = RE::PlayerCharacter::GetSingleton();
+                    //if (!player) {
+                    //    log::warn("PlayerCharacter not available in PostLoadGame/NewGame");
+                    //    // RE::ConsoleLog::GetSingleton()->Print("PlayerCharacter not available in
+                    //    // PostLoadGame/NewGame");
+                    //    break;
+                    //} bool ok =
+                    //    player->AddAnimationGraphEventSink(std::addressof(MSCO::AnimationEventHandler::GetSingleton()));
+                    //log::info("Registered AnimationEventSink on player? {}", ok);
+                    //// RE::ConsoleLog::GetSingleton()->Print("Registered AnimationEventSink on player? {}", ok);
+                    auto* eventSource = RE::ScriptEventSourceHolder::GetSingleton();
+                    if (eventSource) {
+                        eventSource->AddEventSink<RE::TESSpellCastEvent>(MSCO::SpellCastEventHandler::GetSingleton());
+                        log::info("Registered SpellCastEventHandler");
+                    } else {
+                        log::warn("Failed to get ScriptEventSourceHolder for SpellCastEventHandler");
+                    }
                     break;
                 }
                 //case SKSE::MessagingInterface::kNewGame: {
@@ -97,7 +105,7 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
     MSCO::AttackBlockHook::Install();
     log::info("Installed AttackBlockHandler::ProcessButton hook");
     MSCO::AnimEventHook::Install();
-
+    //InitializeEventSink();
     log::info("{} has finished loading.", plugin->GetName());
     return true;
 }

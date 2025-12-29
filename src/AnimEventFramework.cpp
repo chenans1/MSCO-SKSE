@@ -38,61 +38,43 @@ namespace MSCO {
     //interrupts vanilla conc casting on transition
     void AnimEventHook::HandleEvent(RE::BSAnimationGraphEvent* a_event) {
         if (!a_event || !a_event->holder || !a_event->tag.data()) {
-            log::warn("HandleEvent called with no event");
+            //log::warn("HandleEvent called with no event");
             return;
         }
         auto* holder = const_cast<RE::TESObjectREFR*>(a_event->holder);
         auto* actor = holder ? holder->As<RE::Actor>() : nullptr;
 
         if (!actor) {
-            log::warn("HandleEvent called with no actor");
+            //log::warn("HandleEvent called with no actor");
             return;
         }
         
         //log::info("HandleEvent Called");
-        /*MSCO::Magic::Hand firingHand{};
+        MSCO::Magic::Hand firingHand{};
         const auto& tag = a_event->tag;
         
-        if (!IsBeginCastEvent(tag, firingHand)) {
+        if (!IsMSCOEvent(tag, firingHand)) {
             return;
         }
-
-        const bool castingMSCO = GetGraphBool(actor, "bCastingMSCO", false);
-        if (!castingMSCO) {
-            return;
-        }
-        log::info("bCastingMSCO Detected");
-        const bool castingVanilla = GetGraphBool(actor, "bCastingVanilla", false);
-        if (!castingVanilla) {
-            return;
-        }*/
-        //log::info("Detected Fire and Forget Anim event");
-
-        //const bool castingVanilla = GetGraphBool(actor, "bCastingVanilla", false);
-        //if (!castingVanilla) {
-        //    return;
-        //}
-        
-        //const auto otherHand = OtherHand(firingHand);
-       /* const auto otherHand =
+        //log::info("msco casting event detected");
+        const auto otherHand =
             (firingHand == MSCO::Magic::Hand::Right) 
             ? MSCO::Magic::Hand::Left : MSCO::Magic::Hand::Right;
-        const auto otherSource = MSCO::Magic::HandToSource(otherHand);*/
-        /*if (auto* caster = actor->GetMagicCaster(otherSource)) {
-            caster->InterruptCast(false);
-        }*/
-        const auto& tag = a_event->tag;
-        if (tag == "EndLeftVanilla"sv) {
-            auto* caster = actor->GetMagicCaster(RE::MagicSystem::CastingSource::kLeftHand);
-            caster->InterruptCast(false);
-            log::info("Interrupted Left");
+
+        RE::MagicItem* otherItem = nullptr;
+
+        otherItem = GetCurrentlyCastingMagicItem(actor, otherHand);
+        if (!otherItem) {
+            //log::info("no other item for GetCurrentlyCastingMagicItem()");
+            return;
+        }
+        //log::info("detected magic item");
+
+        if (isMagicItemConcentration(otherItem)) {
+            InterruptHand(actor, otherHand);
+            log::info("Interrupted Concentration Casting");
         }
 
-        if (tag == "EndRightVanilla"sv) {
-            auto* caster = actor->GetMagicCaster(RE::MagicSystem::CastingSource::kRightHand);
-            caster->InterruptCast(false);
-            log::info("Interrupted Right");
-        }
     }
 
     //the mrh_spellaimedstart type specific events do not appear in the event sinks - they are notifys, do workaround instead:
@@ -103,12 +85,89 @@ namespace MSCO {
         }
         if (tag == "BeginCastLeft"sv) {
             outHand = MSCO::Magic::Hand::Left;
-
             return true;
         }
         return false;
     }
 
+    bool AnimEventHook::IsMSCOEvent(const RE::BSFixedString& tag, MSCO::Magic::Hand& outHand) {
+        if (tag == "RightMSCOStart"sv) {
+            outHand = MSCO::Magic::Hand::Right;
+            return true;
+        }
+        if (tag == "LeftMSCOStart"sv) {
+            outHand = MSCO::Magic::Hand::Left;
+            return true;
+        }
+        return false;
+    }
+    //gets the equipped magic item for hand
+    RE::MagicItem* AnimEventHook::GetEquippedMagicItemForHand(RE::Actor* actor, MSCO::Magic::Hand hand) { 
+        if (!actor) {
+            return nullptr;
+        }
+        //first, check for spell. 
+        if (auto* form = MSCO::Magic::GetEquippedSpellHand(actor, hand)) {
+            if (auto* spell = form->As<RE::SpellItem>()) {
+                return spell;  // SpellItem is a MagicItem
+            }
+        }
+
+        //then check for staff:
+        const bool left = (hand == MSCO::Magic::Hand::Left);
+        auto* equippedForm = actor->GetEquippedObject(left);
+        auto* weap = equippedForm ? equippedForm->As<RE::TESObjectWEAP>() : nullptr;
+        if (!weap) {
+            return nullptr;
+        }
+        RE::EnchantmentItem* ench = nullptr;
+        ench = weap->formEnchanting;
+
+        if (!ench) {
+            return nullptr;
+        }
+
+        return ench;
+    }
+
+    //can check for the source, im assumign some of the edits come from other hand?
+    RE::MagicItem* AnimEventHook::GetCurrentlyCastingMagicItem(RE::Actor* actor, MSCO::Magic::Hand hand) {
+        if (!actor) {
+            return nullptr;
+        }
+        const auto source = MSCO::Magic::HandToSource(hand);
+        auto* caster = actor->GetMagicCaster(source);
+        if (!caster) {
+            return nullptr;
+        }
+
+        return caster->currentSpell;
+    }
+    
+    //turns out you can just get the casting item type ig
+    bool AnimEventHook::isMagicItemConcentration(RE::MagicItem* item) {
+        if (!item) {
+            return false;
+        }
+        //handle spells
+
+        return item->GetCastingType() == RE::MagicSystem::CastingType::kConcentration;
+        /*if (auto* spell = item->As<RE::SpellItem>()) {
+            return spell->GetCastingType() == RE::MagicSystem::CastingType::kConcentration;
+        }*/
+        /*for (auto& effect : item->effects) {
+            auto* mgef = effect ? effect->baseEffect : nullptr;
+            if (!mgef) {
+                continue;
+            }
+            if (mgef->GetCastingType() == RE::MagicSystem::CastingType::kConcentration) {
+                return true;
+            }
+
+        }*/
+
+        //return false;
+    }
     //check for fire and forget spell type.
     bool AnimEventHook::IsHandFireAndForget(RE::Actor* actor, MSCO::Magic::Hand hand) {
         auto* item = MSCO::Magic::GetEquippedSpellHand(actor, hand);
@@ -134,17 +193,7 @@ namespace MSCO {
         bool v = defaultValue;
         if (actor) {
             actor->GetGraphVariableBool(name, v);
-            //actor->GetGraphVariableBool(name, v);
         }
         return v;
-        /*bool value = defaultValue;
-        if (!actor) {
-            return defaultValue;
-        }
-
-        const bool ok = actor->GetGraphVariableBool(name, value);
-        log::info("GraphBool '{}' ok={} value={}", name, ok, value);
-        return ok;
-        return ok ? value : defaultValue;*/
     }
 }

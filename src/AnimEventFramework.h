@@ -24,7 +24,12 @@ namespace MSCO {
 
         //main logic function, detects FNF event, interrupts other hand if applicable.
         static void HandleEvent(RE::BSAnimationGraphEvent* a_event);
-
+        
+        static RE::MagicItem* GetEquippedMagicItemForHand(RE::Actor* actor, MSCO::Magic::Hand hand);
+        static RE::MagicItem* GetCurrentlyCastingMagicItem(RE::Actor* actor, MSCO::Magic::Hand hand);
+        static bool isMagicItemConcentration(RE::MagicItem* item);
+       
+        static bool IsMSCOEvent(const RE::BSFixedString& tag, MSCO::Magic::Hand& outHand);
         static bool IsBeginCastEvent(const RE::BSFixedString& tag, MSCO::Magic::Hand& outHand);
         static bool IsHandFireAndForget(RE::Actor* actor, MSCO::Magic::Hand hand);
         static void InterruptHand(RE::Actor* actor, MSCO::Magic::Hand hand);
