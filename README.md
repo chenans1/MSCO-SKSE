@@ -6,4 +6,4 @@ Credits:
 - Skyrimscripting for the youtube guides
 - Ryan Mackenzie, CharmedBaryon, PO3 for commonlib NG
 - Loki & Arc earth for dynamic animation casting ng
-- Distar & Monitor144hz for teaching me stuff about behaviors
+- Distar/Monitor144hz for guidance on havok behavior editing
