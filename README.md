@@ -1,5 +1,6 @@
 MSCO: modern spell casting overhaul SKSE
-Overhaul of spell casting animations and logic developed using commonlib.
+
+Overhaul of Skyrim's spell casting animations and logic developed using commonlib.
 Plugin primarily handles event control logic and guarantees casting state and animation state synchronization. 
 Credits:
 - Skyrimscripting for the youtube guides
