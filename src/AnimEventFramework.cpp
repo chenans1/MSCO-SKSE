@@ -26,7 +26,7 @@ namespace MSCO {
     ) {
         
         if (HandleEvent(a_event)) {
-            log::info("HandleEvent Blocked ProcessEvent()");
+            //log::info("HandleEvent Blocked ProcessEvent()");
             return RE::BSEventNotifyControl::kContinue;
         }
         //HandleEvent(a_event);
@@ -36,7 +36,10 @@ namespace MSCO {
     AnimEventHook::EventResult AnimEventHook::ProcessEvent_PC(
         RE::BSTEventSink<RE::BSAnimationGraphEvent>* a_sink, RE::BSAnimationGraphEvent* a_event,
         RE::BSTEventSource<RE::BSAnimationGraphEvent>* a_eventSource) {
-        HandleEvent(a_event);
+        //HandleEvent(a_event);
+        if (HandleEvent(a_event)) {
+            return RE::BSEventNotifyControl::kContinue;
+        }
         return _originalPC(a_sink, a_event, a_eventSource);
     }
 
@@ -56,6 +59,13 @@ namespace MSCO {
         
         //log::info("HandleEvent Called");
         const auto& tag = a_event->tag;
+
+        //if We see the "CastingStateExit" Event we interrupt/clear both hands
+        if (tag == "CastingStateExit"sv) {
+            InterruptHand(actor, MSCO::Magic::Hand::Right);
+            InterruptHand(actor, MSCO::Magic::Hand::Left);
+            return false;
+        }
 
         //on MCO_WinOpen Allow for the casting?
         if (tag == "MCO_WinOpen"sv) {
@@ -78,9 +88,7 @@ namespace MSCO {
             if (ok && lock != 0) {
                 return true;  //swallow the BeginCastLeft/Right Event
             }
-
         }
-
 
         //interrupt conc spell in other hand if applicable
         MSCO::Magic::Hand firingHand{};
@@ -103,7 +111,7 @@ namespace MSCO {
 
         if (isMagicItemConcentration(otherItem)) {
             InterruptHand(actor, otherHand);
-            log::info("Interrupted Concentration Casting");
+            //log::info("Interrupted Concentration Casting");
         }
 
         return false;
