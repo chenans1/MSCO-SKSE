@@ -1,7 +1,6 @@
 MSCO: modern spell casting overhaul SKSE
-
-commonlibNG plugin to cast spells based on animation events
-
+Overhaul of spell casting animations and logic developed using commonlib.
+Plugin primarily handles event control logic and guarantees casting state and animation state synchronization. 
 Credits:
 - Skyrimscripting for the youtube guides
 - Ryan Mackenzie, CharmedBaryon, PO3 for commonlib NG
