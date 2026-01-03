@@ -78,6 +78,14 @@ namespace MSCO {
             return false;
         }
 
+        if (tag == "MRh_SpellFire_Event"sv) {
+            log::info("Intercepted MRh_SpellFire_Event");
+            return true;
+        }
+        if (tag == "MLh_SpellFire_Event"sv) {
+            log::info("Intercepted MLh_SpellFire_Event");
+            return true;
+        }
         //test: block NPC processEvent on begin cast if lock.
         MSCO::Magic::Hand beginHand{};
         if (IsBeginCastEvent(tag, beginHand)) {
@@ -88,7 +96,45 @@ namespace MSCO {
             if (ok && lock != 0) {
                 return true;  //swallow the BeginCastLeft/Right Event
             }
+
+            RE::MagicItem* CurrentSpell = GetEquippedMagicItemForHand(actor, beginHand);
+            if (!CurrentSpell) {
+                log::warn("No CurrentSpell");
+                return false;
+            }
+            bool isfnf = (CurrentSpell->GetCastingType() == RE::MagicSystem::CastingType::kFireAndForget);
+
+            //send anim event depending on the thing
+            if (isfnf) {
+                //dual casting always occurs on begincastleft
+                if (beginHand == MSCO::Magic::Hand::Left) {
+                    //check if we are dual casting perhaps?
+                    const auto source = MSCO::Magic::HandToSource(MSCO::Magic::Hand::Left);
+                    auto* caster = actor->GetMagicCaster(source);
+
+                    RE::MagicSystem::CannotCastReason reason = RE::MagicSystem::CannotCastReason::kOK;
+                    float effect_strength = 1.0f;
+
+                    bool CanDualCast = caster->CheckCast(CurrentSpell, true, &effect_strength, &reason, false);
+                    //bool wantCastRight = GetGraphBool(actor, "bWantCastRight");
+                    bool wantCastRight = true;
+                    if (wantCastRight && CanDualCast) {
+                        log::info("Dual Casting Detected");
+                        actor->NotifyAnimationGraph("MSCO_start_dual"sv);
+                        //actor->NotifyAnimationGraph("MLh_SpellReady_Event"sv);
+                        return true;
+                    }
+                }
+                
+                actor->NotifyAnimationGraph((beginHand == MSCO::Magic::Hand::Right) ? "MSCO_start_right"sv : "MSCO_start_left"sv);
+                //actor->NotifyAnimationGraph((beginHand == MSCO::Magic::Hand::Right) ? "MLh_SpellReady_Event"sv : "MRh_SpellReady_Event"sv);
+                return true;
+            }
+            
+            return false;
         }
+
+
 
         //interrupt conc spell in other hand if applicable
         MSCO::Magic::Hand firingHand{};
