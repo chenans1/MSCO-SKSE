@@ -168,7 +168,6 @@ namespace MSCO {
     }
 
     bool AnimEventHook::IsMSCOEvent(const RE::BSFixedString& tag, MSCO::Magic::Hand& outHand) {
-
         if (tag == "RightMSCOStart"sv) {
             outHand = MSCO::Magic::Hand::Right;
             return true;
@@ -179,7 +178,7 @@ namespace MSCO {
         }
         return false;
     }
-    //gets the equipped magic item for hand
+    //gets the equipped magic item for hand. should handle staves (no idea for scrolls?)
     RE::MagicItem* AnimEventHook::GetEquippedMagicItemForHand(RE::Actor* actor, MSCO::Magic::Hand hand) { 
         if (!actor) {
             return nullptr;

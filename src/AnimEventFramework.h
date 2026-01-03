@@ -37,6 +37,6 @@ namespace MSCO {
 
         // store the original functions, so that we don't break other mods.
         static inline REL::Relocation<decltype(ProcessEvent_NPC)> _originalNPC;
-        static inline REL::Relocation<decltype(ProcessEvent_NPC)> _originalPC;
+        static inline REL::Relocation<decltype(ProcessEvent_PC)> _originalPC;
     };
 }
