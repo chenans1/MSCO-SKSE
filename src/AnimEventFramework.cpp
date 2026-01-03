@@ -59,6 +59,7 @@ namespace MSCO {
         
         //log::info("HandleEvent Called");
         const auto& tag = a_event->tag;
+        const auto& payload = a_event->payload;
 
         //if We see the "CastingStateExit" Event we interrupt/clear both hands
         if (tag == "CastingStateExit"sv) {
@@ -79,11 +80,21 @@ namespace MSCO {
         }
 
         if (tag == "MRh_SpellFire_Event"sv) {
-            log::info("Intercepted MRh_SpellFire_Event");
+            bool isMSCO = GetGraphBool(actor, "bIsMSCO");
+            if (!isMSCO) {
+                return false;
+            }
+            MSCO::Magic::CastEquippedHand(actor, MSCO::Magic::Hand::Right, false);
+            log::info("Intercepted MRh_SpellFire_Event.{}", payload);
             return true;
         }
         if (tag == "MLh_SpellFire_Event"sv) {
-            log::info("Intercepted MLh_SpellFire_Event");
+            bool isMSCO = GetGraphBool(actor, "bIsMSCO");
+            if (!isMSCO) {
+                return false;
+            }
+            MSCO::Magic::CastEquippedHand(actor, MSCO::Magic::Hand::Left, false);
+            log::info("Intercepted MLh_SpellFire_Event.{}", payload);
             return true;
         }
         //test: block NPC processEvent on begin cast if lock.
@@ -97,6 +108,11 @@ namespace MSCO {
                 return true;  //swallow the BeginCastLeft/Right Event
             }
 
+            //check if we are sneaking nor not - don't do anything if we are
+            if (actor->IsSneaking()) {
+                return false;
+            }
+
             RE::MagicItem* CurrentSpell = GetEquippedMagicItemForHand(actor, beginHand);
             if (!CurrentSpell) {
                 log::warn("No CurrentSpell");
@@ -107,22 +123,28 @@ namespace MSCO {
             //send anim event depending on the thing
             if (isfnf) {
                 //dual casting always occurs on begincastleft
+                //if (beginHand == MSCO::Magic::Hand::Left) {
+                //    //check if we are dual casting perhaps?
+                //    const auto source = MSCO::Magic::HandToSource(MSCO::Magic::Hand::Left);
+                //    auto* caster = actor->GetMagicCaster(source);
+
+                //    RE::MagicSystem::CannotCastReason reason = RE::MagicSystem::CannotCastReason::kOK;
+                //    float effect_strength = 1.0f;
+
+                //    bool CanDualCast = caster->CheckCast(CurrentSpell, true, &effect_strength, &reason, false);
+                //    //bool wantCastRight = GetGraphBool(actor, "bWantCastRight");
+
+                //    if (wantCastRight && CanDualCast) {
+                //        log::info("Dual Casting Detected");
+                //        actor->NotifyAnimationGraph("MSCO_start_dual"sv);
+                //        //actor->NotifyAnimationGraph("MLh_SpellReady_Event"sv);
+                //        return true;
+                //    }
+                //}
                 if (beginHand == MSCO::Magic::Hand::Left) {
-                    //check if we are dual casting perhaps?
-                    const auto source = MSCO::Magic::HandToSource(MSCO::Magic::Hand::Left);
-                    auto* caster = actor->GetMagicCaster(source);
-
-                    RE::MagicSystem::CannotCastReason reason = RE::MagicSystem::CannotCastReason::kOK;
-                    float effect_strength = 1.0f;
-
-                    bool CanDualCast = caster->CheckCast(CurrentSpell, true, &effect_strength, &reason, false);
-                    //bool wantCastRight = GetGraphBool(actor, "bWantCastRight");
-                    bool wantCastRight = true;
-                    if (wantCastRight && CanDualCast) {
-                        log::info("Dual Casting Detected");
-                        actor->NotifyAnimationGraph("MSCO_start_dual"sv);
-                        //actor->NotifyAnimationGraph("MLh_SpellReady_Event"sv);
-                        return true;
+                    //check if the spell we are looking at can be dual-casted or not
+                    if (!CurrentSpell->GetNoDualCastModifications()) {
+                        log::info("can dual cast the left hand spell");
                     }
                 }
                 
@@ -271,7 +293,7 @@ namespace MSCO {
         const auto source = MSCO::Magic::HandToSource(hand);
         if (auto* caster = actor->GetMagicCaster(source); caster) {
             caster->InterruptCast(false);
-            log::info("InterruptedCast");
+            //log::info("InterruptedCast");
         }
         //do nothing if else.
     }
