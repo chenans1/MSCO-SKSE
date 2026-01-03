@@ -48,82 +48,82 @@ namespace MSCO {
         auto* player = RE::PlayerCharacter::GetSingleton();
         if (!player) {return RE::BSEventNotifyControl::kContinue;}
         //no sneak jump + has to have weapons out.
-        if (!IsValidPlayerState(player)) {
-            return RE::BSEventNotifyControl::kContinue;
-        }
-        bool leftPressed = false;
-        bool rightPressed = false;
+        //if (!IsValidPlayerState(player)) {
+        //    return RE::BSEventNotifyControl::kContinue;
+        //}
+        //bool leftPressed = false;
+        //bool rightPressed = false;
 
-        for (auto* event = *a_events; event; event = event->next) {
-            if (event->eventType != RE::INPUT_EVENT_TYPE::kButton) {
-                continue;
-            }
+        //for (auto* event = *a_events; event; event = event->next) {
+        //    if (event->eventType != RE::INPUT_EVENT_TYPE::kButton) {
+        //        continue;
+        //    }
 
-            auto* button = event->AsButtonEvent();
-            if (!button) {
-                continue;
-            }
+        //    auto* button = event->AsButtonEvent();
+        //    if (!button) {
+        //        continue;
+        //    }
 
-            /*if (!button->IsDown()) { continue; }*/
-            if (!(button->IsDown() && button->HeldDuration() == 0.0f)) continue;
+        //    /*if (!button->IsDown()) { continue; }*/
+        //    if (!(button->IsDown() && button->HeldDuration() == 0.0f)) continue;
 
-            //map by user-event name
-            const auto& userEvent = button->QUserEvent();
-            if (userEvent.empty()) {
-                continue;
-            }
+        //    //map by user-event name
+        //    const auto& userEvent = button->QUserEvent();
+        //    if (userEvent.empty()) {
+        //        continue;
+        //    }
 
-            std::string_view evName{userEvent};
-            //do not fucking use a mod that renames these in the action records
-            if (evName == "Left Attack/Block") {
-                leftPressed = true;
-            } else if (evName == "Right Attack/Block") {
-                rightPressed = true;
-            }
-        }
+        //    std::string_view evName{userEvent};
+        //    //do not fucking use a mod that renames these in the action records
+        //    if (evName == "Left Attack/Block") {
+        //        leftPressed = true;
+        //    } else if (evName == "Right Attack/Block") {
+        //        rightPressed = true;
+        //    }
+        //}
 
-        if (!leftPressed && !rightPressed) {
-            // RE::ConsoleLog::GetSingleton()->Print("No Input Detected");
-            return RE::BSEventNotifyControl::kContinue;
-        }
+        //if (!leftPressed && !rightPressed) {
+        //    // RE::ConsoleLog::GetSingleton()->Print("No Input Detected");
+        //    return RE::BSEventNotifyControl::kContinue;
+        //}
 
-        // need to check equipped hand to avoid sending invalid events
-        auto* leftSpell = MSCO::Magic::GetEquippedSpellHand(player, Hand::Left);
-        auto* rightSpell = MSCO::Magic::GetEquippedSpellHand(player, Hand::Right);
+        //// need to check equipped hand to avoid sending invalid events
+        //auto* leftSpell = MSCO::Magic::GetEquippedSpellHand(player, Hand::Left);
+        //auto* rightSpell = MSCO::Magic::GetEquippedSpellHand(player, Hand::Right);
 
-        const bool hasLeftSpell = leftSpell != nullptr;
-        const bool hasRightSpell = rightSpell != nullptr;
+        //const bool hasLeftSpell = leftSpell != nullptr;
+        //const bool hasRightSpell = rightSpell != nullptr;
 
-        // early     on both left/right not being spell
-        if (!hasLeftSpell && !hasRightSpell) {
-            return RE::BSEventNotifyControl::kContinue;
-        }
-        
-        bool willDualCast = false;
-        if (!MSCO::Magic::CanCastSpell(
-            static_cast<RE::Actor*>(player),
-            leftSpell, 
-            rightSpell, 
-            leftPressed, 
-            rightPressed, 
-            willDualCast
-        )) {
-            return RE::BSEventNotifyControl::kStop;
-            //return RE::BSEventNotifyControl::kContinue;
-        }
+        //// early     on both left/right not being spell
+        //if (!hasLeftSpell && !hasRightSpell) {
+        //    return RE::BSEventNotifyControl::kContinue;
+        //}
+        //
+        //bool willDualCast = false;
+        //if (!MSCO::Magic::CanCastSpell(
+        //    static_cast<RE::Actor*>(player),
+        //    leftSpell, 
+        //    rightSpell, 
+        //    leftPressed, 
+        //    rightPressed, 
+        //    willDualCast
+        //)) {
+        //    return RE::BSEventNotifyControl::kStop;
+        //    //return RE::BSEventNotifyControl::kContinue;
+        //}
 
-        if (willDualCast) {
-            SendAnimEvent(player, "MSCO_input_dual"sv);
-        } else {
-            if (leftPressed && hasLeftSpell) {
-                SendAnimEvent(player, "MSCO_input_left"sv);
-                return RE::BSEventNotifyControl::kStop;
-            }
-            if (rightPressed && hasRightSpell) {
-                SendAnimEvent(player, "MSCO_input_right"sv);
-                return RE::BSEventNotifyControl::kStop;
-            }
-        }
+        //if (willDualCast) {
+        //    SendAnimEvent(player, "MSCO_input_dual"sv);
+        //} else {
+        //    if (leftPressed && hasLeftSpell) {
+        //        SendAnimEvent(player, "MSCO_input_left"sv);
+        //        return RE::BSEventNotifyControl::kStop;
+        //    }
+        //    if (rightPressed && hasRightSpell) {
+        //        SendAnimEvent(player, "MSCO_input_right"sv);
+        //        return RE::BSEventNotifyControl::kStop;
+        //    }
+        //}
         //return RE::BSEventNotifyControl::kStop;
         return RE::BSEventNotifyControl::kContinue;
     }   
