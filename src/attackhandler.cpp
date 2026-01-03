@@ -23,21 +23,19 @@ namespace MSCO {
                 if (player) {
                     int lock = 0;
                     bool ok = false;
-
                     if (std::strcmp(s, "Left Attack/Block") == 0) {
                         ok = player->GetGraphVariableInt("MSCO_left_lock", lock);
 
-                        log::info("[ABHook] {} ok={} lock={}", s, ok, lock);
+                        //log::info("[ABHook] {} ok={} lock={}", s, ok, lock);
                         swallow = (ok && lock != 0);
                     } else if (std::strcmp(s, "Right Attack/Block") == 0) {
                         ok = player->GetGraphVariableInt("MSCO_right_lock", lock);
-
-                        log::info("[ABHook] {} ok={} lock={}", s, ok, lock);
+                        //log::info("[ABHook] {} ok={} lock={}", s, ok, lock);
                         swallow = (ok && lock != 0);
                     }
 
                     if (swallow) {  
-                        log::info("[ABHook] Swallowed {}", s);
+                        //log::info("[ABHook] Swallowed {}", s);
                         return;
                     }
                 }
