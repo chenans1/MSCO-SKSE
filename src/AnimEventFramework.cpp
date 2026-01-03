@@ -142,27 +142,49 @@ namespace MSCO {
             //logState(actor, MSCO::Magic::Hand::Right);
             bool isMSCO = GetGraphBool(actor, "bIsMSCO");
             if (!isMSCO) return false;
-            /*auto* rightCaster = actor->GetMagicCaster(MSCO::Magic::HandToSource(MSCO::Magic::Hand::Left));
-            if (rightCaster && rightCaster->GetIsDualCasting()) {
-                log::info("Right Dual Casting");
-            }*/
+            bool isDualMSCO = GetGraphBool(actor, "bMSCODualCasting");
+            if (isDualMSCO) {
+                log::info("MSCO right dual casting detected - abort for now");
+                return true;
+            }
+            
             MSCO::Magic::CastEquippedHand(actor, MSCO::Magic::Hand::Right, false);
+            if (auto ScriptEventSourceHolder = RE::ScriptEventSourceHolder::GetSingleton()) {
+                if (auto RefHandle = actor->CreateRefHandle()) {
+                    RE::MagicItem* CurrentSpell = GetEquippedMagicItemForHand(actor, MSCO::Magic::Hand::Right);
+                    if (!CurrentSpell) {
+                        log::warn("No CurrentSpell");
+                        return false;
+                    }
+                    ScriptEventSourceHolder->SendSpellCastEvent(RefHandle.get(), CurrentSpell->formID);
+                }
+            }
             log::info("Intercepted MRh_SpellFire_Event.{}", payload);
             return true;
         }
+
         if (tag == "MLh_SpellFire_Event"sv) {
             //logState(actor, MSCO::Magic::Hand::Left);
             bool isMSCO = GetGraphBool(actor, "bIsMSCO");
             if (!isMSCO) return false;
-            /*auto* leftCaster = actor->GetMagicCaster(MSCO::Magic::HandToSource(MSCO::Magic::Hand::Right));
-            if (leftCaster && leftCaster->GetIsDualCasting()) {
-                log::info("Left Dual Casting");
-            }*/
-            MSCO::Magic::CastEquippedHand(actor, MSCO::Magic::Hand::Left, false);
+            bool isDualMSCO = GetGraphBool(actor, "bMSCODualCasting");
+            if (isDualMSCO) log::info("MSCO left dual casting");
+            MSCO::Magic::CastEquippedHand(actor, MSCO::Magic::Hand::Left, isDualMSCO);
+            if (auto ScriptEventSourceHolder = RE::ScriptEventSourceHolder::GetSingleton()) {
+                if (auto RefHandle = actor->CreateRefHandle()) {
+                    RE::MagicItem* CurrentSpell = GetEquippedMagicItemForHand(actor, MSCO::Magic::Hand::Left);
+                    if (!CurrentSpell) {
+                        log::warn("No CurrentSpell");
+                        return false;
+                    }
+                    ScriptEventSourceHolder->SendSpellCastEvent(RefHandle.get(), CurrentSpell->formID);
+                }
+            }
             log::info("Intercepted MLh_SpellFire_Event.{}", payload);
             return true;
         }
-        //test: block NPC processEvent on begin cast if lock.
+
+        //BeginCastLeft/Right handler. Handles button suppresion and MSCO inputs
         MSCO::Magic::Hand beginHand{};
         if (IsBeginCastEvent(tag, beginHand)) {
             //logState(actor, beginHand);
@@ -172,6 +194,14 @@ namespace MSCO {
 
             if (ok && lock != 0) return true;  // swallow the BeginCastLeft/Right Event
             if (actor->IsSneaking()) return false; //check if we are sneaking nor not - don't do anything if we are
+
+            //damage magicka by some very very small amount here to pause regen for balance purposes
+            RE::ActorValueOwner* actorAV = actor->AsActorValueOwner();
+            if (!actorAV) {
+                log::warn("[AnimEventFramework] No actor value");
+            } else {
+                actorAV->DamageActorValue(RE::ActorValue::kMagicka, 0.001f);
+            }
 
             RE::MagicItem* CurrentSpell = GetEquippedMagicItemForHand(actor, beginHand);
             if (!CurrentSpell) {log::warn("No CurrentSpell"); return false;}
@@ -183,27 +213,23 @@ namespace MSCO {
             bool wantDualCasting = caster->GetIsDualCasting();
             //log::info("{}", (caster->GetIsDualCasting()) ? "is dual casting" : "not dual casting");
             
-            if (isfnf) {                
-                if (wantDualCasting) {
-                    actor->NotifyAnimationGraph("MSCO_start_dual"sv);
-                    if (auto ScriptEventSourceHolder = RE::ScriptEventSourceHolder::GetSingleton()) {
-                        if (auto RefHandle = actor->CreateRefHandle()) {
-                            ScriptEventSourceHolder->SendSpellCastEvent(RefHandle.get(), CurrentSpell->formID);
-                        }
-                    }
-                    return true;
-                }
-                //send script event for reliability? not sure if needed
-                if (auto ScriptEventSourceHolder = RE::ScriptEventSourceHolder::GetSingleton()) {
-                    if (auto RefHandle = actor->CreateRefHandle()) {
-                        ScriptEventSourceHolder->SendSpellCastEvent(RefHandle.get(), CurrentSpell->formID);
-                    }
-                }
-                actor->NotifyAnimationGraph((beginHand == MSCO::Magic::Hand::Right) ? "MSCO_start_right"sv : "MSCO_start_left"sv);
-                //logState(actor, beginHand);
+            //we don't handle non-fnf/scrolls spells for now
+            if (!isfnf) return false;
+            if (wantDualCasting) {
+                actor->NotifyAnimationGraph("MSCO_start_dual"sv);
                 return true;
             }
-            return false;
+            // send script event for reliability? not sure if needed
+            if (auto ScriptEventSourceHolder = RE::ScriptEventSourceHolder::GetSingleton()) {
+                if (auto RefHandle = actor->CreateRefHandle()) {
+                    ScriptEventSourceHolder->SendSpellCastEvent(RefHandle.get(), CurrentSpell->formID);
+                }
+            }
+            actor->NotifyAnimationGraph((beginHand == MSCO::Magic::Hand::Right) ? "MSCO_start_right"sv
+                                                                                : "MSCO_start_left"sv);
+            // logState(actor, beginHand);
+            
+            return true;
         }
 
         //interrupt conc spell in other hand if applicable
@@ -223,7 +249,6 @@ namespace MSCO {
             return false;
         }
         //log::info("detected magic item");
-
         if (isMagicItemConcentration(otherItem)) InterruptHand(actor, otherHand);
 
         return false;
