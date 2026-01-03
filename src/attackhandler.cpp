@@ -25,7 +25,6 @@ namespace MSCO {
                     bool ok = false;
                     if (std::strcmp(s, "Left Attack/Block") == 0) {
                         ok = player->GetGraphVariableInt("MSCO_left_lock", lock);
-
                         //log::info("[ABHook] {} ok={} lock={}", s, ok, lock);
                         swallow = (ok && lock != 0);
                     } else if (std::strcmp(s, "Right Attack/Block") == 0) {

@@ -179,13 +179,10 @@ namespace MSCO::Magic {
 
         //log::info("Casting {} on {} with (dualcasting = {})", spell->fullName, target, dualCast);
 
-        //only play release sound here. charge and ready should be handled somewhere else.
-        //fetch sound first
+        //fetch sound and play
         RE::BGSSoundDescriptorForm* releaseSound = MSCO::Sound::GetMGEFSound(spell);
-        if (releaseSound) {
-            // Fire and forget; your helper already handles nulls/engine quirks
-            MSCO::Sound::play_sound(actor, releaseSound);
-        }
+        if (releaseSound) MSCO::Sound::play_sound(actor, releaseSound);
+        caster->PlayReleaseSound(spell);
         caster->CastSpellImmediate(spell,              // spell
                                    false,              // noHitEffectArt
                                    target,            // target

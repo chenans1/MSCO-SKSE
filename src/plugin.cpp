@@ -57,16 +57,6 @@ namespace {
                 //    break;
                 //}
                 case SKSE::MessagingInterface::kPostLoadGame: {
-                    //auto* player = RE::PlayerCharacter::GetSingleton();
-                    //if (!player) {
-                    //    log::warn("PlayerCharacter not available in PostLoadGame/NewGame");
-                    //    // RE::ConsoleLog::GetSingleton()->Print("PlayerCharacter not available in
-                    //    // PostLoadGame/NewGame");
-                    //    break;
-                    //} bool ok =
-                    //    player->AddAnimationGraphEventSink(std::addressof(MSCO::AnimationEventHandler::GetSingleton()));
-                    //log::info("Registered AnimationEventSink on player? {}", ok);
-                    //// RE::ConsoleLog::GetSingleton()->Print("Registered AnimationEventSink on player? {}", ok);
                     auto* eventSource = RE::ScriptEventSourceHolder::GetSingleton();
                     if (eventSource) {
                         eventSource->AddEventSink<RE::TESSpellCastEvent>(MSCO::SpellCastEventHandler::GetSingleton());
@@ -76,19 +66,6 @@ namespace {
                     }
                     break;
                 }
-                //case SKSE::MessagingInterface::kNewGame: {
-                //    auto* player = RE::PlayerCharacter::GetSingleton();
-                //    if (!player) {
-                //        log::warn("PlayerCharacter not available in PostLoadGame/NewGame");
-                //        //RE::ConsoleLog::GetSingleton()->Print("PlayerCharacter not available in PostLoadGame/NewGame");
-                //        break;
-                //    }
-                //    bool ok =
-                //        player->AddAnimationGraphEventSink(std::addressof(MSCO::AnimationEventHandler::GetSingleton()));
-                //    log::info("Registered AnimationEventSink on player? {}", ok);
-                //    //RE::ConsoleLog::GetSingleton()->Print("Registered AnimationEventSink on player? {}", ok);
-                //    break;
-                //}
                 default:
                     break;
             }
