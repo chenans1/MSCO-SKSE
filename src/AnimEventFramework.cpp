@@ -6,6 +6,7 @@ using namespace SKSE::log;
 using namespace std::literals;
 
 namespace MSCO {
+
     void AnimEventHook::Install() {
         log::info("[MSCO] Installing AnimEventFramework hook...");
 
@@ -114,14 +115,27 @@ namespace MSCO {
                     if (wantDualCast) {
                         actor->NotifyAnimationGraph("MSCO_start_dual"sv);
                         log::info("DualCasting on {} due to {}", tag, (beginHand == MSCO::Magic::Hand::Right) ? "bWantCastLeft" : "bWantCastRight");
-                        auto* leftCaster = actor->GetMagicCaster(MSCO::Magic::HandToSource(MSCO::Magic::Hand::Right));
+                        //block below doesn't seem to work, either due to actor magic caster specifics or because the state is auto reset via input checking
+                        /*auto* leftCaster = actor->GetMagicCaster(MSCO::Magic::HandToSource(MSCO::Magic::Hand::Right));
                         auto* rightCaster = actor->GetMagicCaster(MSCO::Magic::HandToSource(MSCO::Magic::Hand::Left));
                         leftCaster->SetDualCasting(true);
-                        rightCaster->SetDualCasting(true);
+                        rightCaster->SetDualCasting(true);*/
+
+                        if (auto ScriptEventSourceHolder = RE::ScriptEventSourceHolder::GetSingleton()) {
+                            if (auto RefHandle = actor->CreateRefHandle()) {
+                                ScriptEventSourceHolder->SendSpellCastEvent(RefHandle.get(), CurrentSpell->formID);
+                            }
+                        }
                         return true;
                     }
                 }
-                
+
+                //send script event for reliability? not sure if needed
+                if (auto ScriptEventSourceHolder = RE::ScriptEventSourceHolder::GetSingleton()) {
+                    if (auto RefHandle = actor->CreateRefHandle()) {
+                        ScriptEventSourceHolder->SendSpellCastEvent(RefHandle.get(), CurrentSpell->formID);
+                    }
+                }
                 actor->NotifyAnimationGraph((beginHand == MSCO::Magic::Hand::Right) ? "MSCO_start_right"sv : "MSCO_start_left"sv);
                 //actor->NotifyAnimationGraph((beginHand == MSCO::Magic::Hand::Right) ? "MLh_SpellReady_Event"sv : "MRh_SpellReady_Event"sv);
                 /*const auto source = MSCO::Magic::HandToSource(beginHand);
