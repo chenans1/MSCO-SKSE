@@ -24,38 +24,23 @@ namespace MSCO {
         RE::BSAnimationGraphEvent* a_event,
         RE::BSTEventSource<RE::BSAnimationGraphEvent>* a_eventSource
     ) {
-        
-        if (HandleEvent(a_event)) {
-            //log::info("HandleEvent Blocked ProcessEvent()");
-            return RE::BSEventNotifyControl::kContinue;
-        }
-        //HandleEvent(a_event);
+        if (HandleEvent(a_event)) return RE::BSEventNotifyControl::kContinue;
         return _originalNPC(a_sink, a_event, a_eventSource);
     }
 
     AnimEventHook::EventResult AnimEventHook::ProcessEvent_PC(
         RE::BSTEventSink<RE::BSAnimationGraphEvent>* a_sink, RE::BSAnimationGraphEvent* a_event,
         RE::BSTEventSource<RE::BSAnimationGraphEvent>* a_eventSource) {
-        //HandleEvent(a_event);
-        if (HandleEvent(a_event)) {
-            return RE::BSEventNotifyControl::kContinue;
-        }
+        if (HandleEvent(a_event)) return RE::BSEventNotifyControl::kContinue;
         return _originalPC(a_sink, a_event, a_eventSource);
     }
 
     //interrupts vanilla conc casting on transition
     bool AnimEventHook::HandleEvent(RE::BSAnimationGraphEvent* a_event) {
-        if (!a_event || !a_event->holder || !a_event->tag.data()) {
-            //log::warn("HandleEvent called with no event");
-            return false;
-        }
+        if (!a_event || !a_event->holder || !a_event->tag.data()) return false;
         auto* holder = const_cast<RE::TESObjectREFR*>(a_event->holder);
         auto* actor = holder ? holder->As<RE::Actor>() : nullptr;
-
-        if (!actor) {
-            //log::warn("HandleEvent called with no actor");
-            return false;
-        }
+        if (!actor) return false;
         
         //log::info("HandleEvent Called");
         const auto& tag = a_event->tag;
@@ -81,18 +66,22 @@ namespace MSCO {
 
         if (tag == "MRh_SpellFire_Event"sv) {
             bool isMSCO = GetGraphBool(actor, "bIsMSCO");
-            if (!isMSCO) {
-                return false;
-            }
+            if (!isMSCO) return false;
+            /*auto* rightCaster = actor->GetMagicCaster(MSCO::Magic::HandToSource(MSCO::Magic::Hand::Left));
+            if (rightCaster && rightCaster->GetIsDualCasting()) {
+                log::info("Right Dual Casting");
+            }*/
             MSCO::Magic::CastEquippedHand(actor, MSCO::Magic::Hand::Right, false);
             log::info("Intercepted MRh_SpellFire_Event.{}", payload);
             return true;
         }
         if (tag == "MLh_SpellFire_Event"sv) {
             bool isMSCO = GetGraphBool(actor, "bIsMSCO");
-            if (!isMSCO) {
-                return false;
-            }
+            if (!isMSCO) return false;
+            /*auto* leftCaster = actor->GetMagicCaster(MSCO::Magic::HandToSource(MSCO::Magic::Hand::Right));
+            if (leftCaster && leftCaster->GetIsDualCasting()) {
+                log::info("Left Dual Casting");
+            }*/
             MSCO::Magic::CastEquippedHand(actor, MSCO::Magic::Hand::Left, false);
             log::info("Intercepted MLh_SpellFire_Event.{}", payload);
             return true;
@@ -104,65 +93,48 @@ namespace MSCO {
             std::int32_t lock = 0;
             const bool ok = actor->GetGraphVariableInt(lockName, lock);
 
-            if (ok && lock != 0) {
-                return true;  //swallow the BeginCastLeft/Right Event
-            }
-
-            //check if we are sneaking nor not - don't do anything if we are
-            if (actor->IsSneaking()) {
-                return false;
-            }
-
+            if (ok && lock != 0) return true;  // swallow the BeginCastLeft/Right Event
+            if (actor->IsSneaking()) return false; //check if we are sneaking nor not - don't do anything if we are
             RE::MagicItem* CurrentSpell = GetEquippedMagicItemForHand(actor, beginHand);
-            if (!CurrentSpell) {
-                log::warn("No CurrentSpell");
-                return false;
-            }
+            if (!CurrentSpell) {log::warn("No CurrentSpell"); return false;}
             bool isfnf = (CurrentSpell->GetCastingType() == RE::MagicSystem::CastingType::kFireAndForget);
 
             //send anim event depending on the thing
             if (isfnf) {
-                //dual casting always occurs on begincastleft
-                //if (beginHand == MSCO::Magic::Hand::Left) {
-                //    //check if we are dual casting perhaps?
-                //    const auto source = MSCO::Magic::HandToSource(MSCO::Magic::Hand::Left);
-                //    auto* caster = actor->GetMagicCaster(source);
+                bool canBeDualCasted = false;
+                bool wantDualCast = false;
+                // check if the spell we are looking at can be dual-casted or not
+                if (!CurrentSpell->GetNoDualCastModifications()) {
+                    //log::info("can dual cast the left hand spell");
+                    canBeDualCasted = true;
+                }
 
-                //    RE::MagicSystem::CannotCastReason reason = RE::MagicSystem::CannotCastReason::kOK;
-                //    float effect_strength = 1.0f;
-
-                //    bool CanDualCast = caster->CheckCast(CurrentSpell, true, &effect_strength, &reason, false);
-                //    //bool wantCastRight = GetGraphBool(actor, "bWantCastRight");
-
-                //    if (wantCastRight && CanDualCast) {
-                //        log::info("Dual Casting Detected");
-                //        actor->NotifyAnimationGraph("MSCO_start_dual"sv);
-                //        //actor->NotifyAnimationGraph("MLh_SpellReady_Event"sv);
-                //        return true;
-                //    }
-                //}
-                if (beginHand == MSCO::Magic::Hand::Left) {
-                    //check if the spell we are looking at can be dual-casted or not
-                    if (!CurrentSpell->GetNoDualCastModifications()) {
-                        log::info("can dual cast the left hand spell");
+                if (canBeDualCasted) {
+                    wantDualCast = GetGraphBool(actor, (beginHand == MSCO::Magic::Hand::Right) ? "bWantCastLeft" : "bWantCastRight");
+                    if (wantDualCast) {
+                        actor->NotifyAnimationGraph("MSCO_start_dual"sv);
+                        log::info("DualCasting on {} due to {}", tag, (beginHand == MSCO::Magic::Hand::Right) ? "bWantCastLeft" : "bWantCastRight");
+                        auto* leftCaster = actor->GetMagicCaster(MSCO::Magic::HandToSource(MSCO::Magic::Hand::Right));
+                        auto* rightCaster = actor->GetMagicCaster(MSCO::Magic::HandToSource(MSCO::Magic::Hand::Left));
+                        leftCaster->SetDualCasting(true);
+                        rightCaster->SetDualCasting(true);
+                        return true;
                     }
                 }
                 
                 actor->NotifyAnimationGraph((beginHand == MSCO::Magic::Hand::Right) ? "MSCO_start_right"sv : "MSCO_start_left"sv);
                 //actor->NotifyAnimationGraph((beginHand == MSCO::Magic::Hand::Right) ? "MLh_SpellReady_Event"sv : "MRh_SpellReady_Event"sv);
+                /*const auto source = MSCO::Magic::HandToSource(beginHand);
+                auto* caster = actor->GetMagicCaster(source);*/
                 return true;
             }
-            
             return false;
         }
-
-
 
         //interrupt conc spell in other hand if applicable
         MSCO::Magic::Hand firingHand{};
-        if (!IsMSCOEvent(tag, firingHand)) {
-            return false;
-        }
+        if (!IsMSCOEvent(tag, firingHand)) return false;
+
         //log::info("msco casting event detected");
         const auto otherHand =
             (firingHand == MSCO::Magic::Hand::Right) 
@@ -177,13 +149,9 @@ namespace MSCO {
         }
         //log::info("detected magic item");
 
-        if (isMagicItemConcentration(otherItem)) {
-            InterruptHand(actor, otherHand);
-            //log::info("Interrupted Concentration Casting");
-        }
+        if (isMagicItemConcentration(otherItem)) InterruptHand(actor, otherHand);
 
         return false;
-
     }
 
     //the mrh_spellaimedstart type specific events do not appear in the event sinks - they are notifys, do workaround instead:
