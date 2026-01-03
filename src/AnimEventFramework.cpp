@@ -182,37 +182,17 @@ namespace MSCO {
             //turns out the game actually already sets the dual casting value correctly by the time we intercept begincastleft
             bool wantDualCasting = caster->GetIsDualCasting();
             //log::info("{}", (caster->GetIsDualCasting()) ? "is dual casting" : "not dual casting");
-            //send anim event depending on the thing
-            if (isfnf) {
-                bool canBeDualCasted = false;
-                bool wantDualCast = false;
-                // check if the spell we are looking at can be dual-casted or not
-                if (!CurrentSpell->GetNoDualCastModifications()) {
-                    //log::info("can dual cast the left hand spell");
-                    canBeDualCasted = true;
-                }
-
-                if (canBeDualCasted) {
-                    wantDualCast = GetGraphBool(actor, (beginHand == MSCO::Magic::Hand::Right) ? "bWantCastLeft" : "bWantCastRight");
-                    if (wantDualCast) {
-                        actor->NotifyAnimationGraph("MSCO_start_dual"sv);
-                        log::info("DualCasting on {} due to {}", tag, (beginHand == MSCO::Magic::Hand::Right) ? "bWantCastLeft" : "bWantCastRight");
-                        //block below doesn't seem to work, either due to actor magic caster specifics or because the state is auto reset via input checking
-                        /*auto* leftCaster = actor->GetMagicCaster(MSCO::Magic::HandToSource(MSCO::Magic::Hand::Right));
-                        auto* rightCaster = actor->GetMagicCaster(MSCO::Magic::HandToSource(MSCO::Magic::Hand::Left));
-                        leftCaster->SetDualCasting(true);
-                        rightCaster->SetDualCasting(true);*/
-
-                        if (auto ScriptEventSourceHolder = RE::ScriptEventSourceHolder::GetSingleton()) {
-                            if (auto RefHandle = actor->CreateRefHandle()) {
-                                ScriptEventSourceHolder->SendSpellCastEvent(RefHandle.get(), CurrentSpell->formID);
-                            }
+            
+            if (isfnf) {                
+                if (wantDualCasting) {
+                    actor->NotifyAnimationGraph("MSCO_start_dual"sv);
+                    if (auto ScriptEventSourceHolder = RE::ScriptEventSourceHolder::GetSingleton()) {
+                        if (auto RefHandle = actor->CreateRefHandle()) {
+                            ScriptEventSourceHolder->SendSpellCastEvent(RefHandle.get(), CurrentSpell->formID);
                         }
-                        //logState(actor, beginHand);
-                        return true;
                     }
+                    return true;
                 }
-
                 //send script event for reliability? not sure if needed
                 if (auto ScriptEventSourceHolder = RE::ScriptEventSourceHolder::GetSingleton()) {
                     if (auto RefHandle = actor->CreateRefHandle()) {
