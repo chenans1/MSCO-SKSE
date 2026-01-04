@@ -97,9 +97,11 @@ namespace MSCO {
         const int slot = (source == RE::MagicSystem::CastingSource::kLeftHand) ? RE::Actor::SlotTypes::kLeftHand : RE::Actor::SlotTypes::kRightHand;
         auto* actorCaster = rd.magicCasters[slot];
 
-        actorCaster->state.set(RE::MagicCaster::State::kUnk04); //set state, test for playreleasesound
+        caster->state.set(RE::MagicCaster::State::kReady);  // set state, test for playreleasesound
+        actorCaster->state.set(RE::MagicCaster::State::kReady);
         //set it again, but probably doesn't get unset
         //actorCaster->SetDualCasting(dualCast);
+        caster->SetDualCasting(dualCast);
         float spellCost = spell->CalculateMagickaCost(actor);
 
         if (dualCast) {
@@ -134,11 +136,11 @@ namespace MSCO {
         }
 
         log::info("spellfire state: {}", logState2(actor, source));
-        actorCaster->PrepareSound(RE::MagicSystem::SoundID::kRelease, spell);  // Doesn't seem to actually do anything, probably something to do with detection events?
-        actorCaster->PlayReleaseSound(spell);  // idk what this does but maybe it sends a detection event? no clue
+        caster->PrepareSound(RE::MagicSystem::SoundID::kRelease, spell);  // Doesn't seem to actually do anything, probably something to do with detection events?
+        caster->PlayReleaseSound(spell);  // idk what this does but maybe it sends a detection event? no clue
 
-        /*RE::BGSSoundDescriptorForm* releaseSound = MSCO::Sound::GetMGEFSound(spell);
-        if (releaseSound) MSCO::Sound::play_sound(actor, releaseSound);*/
+        RE::BGSSoundDescriptorForm* releaseSound = MSCO::Sound::GetMGEFSound(spell);
+        if (releaseSound) MSCO::Sound::play_sound(actor, releaseSound);
         caster->CastSpellImmediate(spell,              // spell
                                    false,              // noHitEffectArt
                                    target,             // target
@@ -147,7 +149,7 @@ namespace MSCO {
                                    0.0f,                // magnitudeOverride dunno what this does not sure
                                    actor               // cause (blame the caster so XP/aggro work)
         );
-        //actorCaster->SetDualCasting(false);
+        //caster->SetDualCasting(false);
         return true;
     }
 
@@ -223,10 +225,10 @@ namespace MSCO {
         //spellfire event handlers
         if (tag == "MRh_SpellFire_Event"sv) {
             if (!GetGraphBool(actor, "bIsMSCO")) return false;
-            if (GetGraphBool(actor, "bMSCODualCasting")) {
+            /*if (GetGraphBool(actor, "bMSCODualCasting")) {
                 log::info("MSCO right dual casting detected - abort for now");
                 return true;
-            }
+            }*/
             RE::MagicItem* CurrentSpell = GetEquippedMagicItemForHand(actor, MSCO::Magic::Hand::Right);
             if (!CurrentSpell) {
                 log::warn("No CurrentSpell");
@@ -234,7 +236,7 @@ namespace MSCO {
             }
             //spell fire stuff now
             log::info("Intercepted MRh_SpellFire_Event.{}", payload);
-            spellfire(RE::MagicSystem::CastingSource::kRightHand, actor, CurrentSpell, false, 1.0f, 1.0f);
+            spellfire(RE::MagicSystem::CastingSource::kRightHand, actor, CurrentSpell, GetGraphBool(actor, "bMSCODualCasting"), 1.0f, 1.0f);
             if (auto ScriptEventSourceHolder = RE::ScriptEventSourceHolder::GetSingleton()) {
                 if (auto RefHandle = actor->CreateRefHandle()) {
                     ScriptEventSourceHolder->SendSpellCastEvent(RefHandle.get(), CurrentSpell->formID);
@@ -289,25 +291,24 @@ namespace MSCO {
             auto* actorCaster = rd.magicCasters[slot];
             
             //test if dual cast flag is set?
-            //const auto source = MSCO::Magic::HandToSource(beginHand);
-            //auto* caster = actor->GetMagicCaster(source);
+            const auto source = MSCO::Magic::HandToSource(beginHand);
+            auto* caster = actor->GetMagicCaster(source);
             //turns out the game actually already sets the dual casting value correctly by the time we intercept begincastleft
             bool wantDualCasting = actorCaster->GetIsDualCasting();
             
             if (wantDualCasting) {
-                actorCaster->state.set(RE::MagicCaster::State::kCharging);
-                actorCaster->NotifyAnimationGraph("MSCO_start_dual"sv);
-                auto log_state_msg3 = logState(actor, beginHand);
-                log::info("state at MSCO_start_dual: {}", log_state_msg3);
-                return true;
+                caster->state.set(RE::MagicCaster::State::kReady);
+                actorCaster->state.set(RE::MagicCaster::State::kReady);
+                actor->NotifyAnimationGraph("MSCO_start_dual"sv);
+                log::info("state at MSCO_start_dual: {}", logState(actor, beginHand));
+                return false;
             }
 
-            actorCaster->state.set(RE::MagicCaster::State::kCharging);
-            actorCaster->NotifyAnimationGraph((beginHand == MSCO::Magic::Hand::Right) ? "MSCO_start_right"sv
-                                                                                      : "MSCO_start_left"sv);
-            auto log_state_msg3 = logState(actor, beginHand);
-            log::info("state at MSCO_start_left/right: {}", log_state_msg3);
-            return true;
+            caster->state.set(RE::MagicCaster::State::kReady);
+            actorCaster->state.set(RE::MagicCaster::State::kReady);
+            actor->NotifyAnimationGraph((beginHand == MSCO::Magic::Hand::Right) ? "MSCO_start_right"sv: "MSCO_start_left"sv);
+            log::info("state at MSCO_start_left/right: {}", logState(actor, beginHand));
+            return false;
         }
 
         //interrupt conc spell in other hand if applicable
