@@ -6,34 +6,6 @@ using namespace SKSE::log;
 using namespace std::literals;
 
 namespace MSCO {
-    /*static const char* StateName(RE::MagicCaster::State s) {
-        using S = RE::MagicCaster::State;
-        switch (s) {
-            case S::kNone:
-                return "None";
-            case S::kUnk01:
-                return "Unk01";
-            case S::kUnk02:
-                return "Unk02";
-            case S::kReady:
-                return "Ready";
-            case S::kUnk04:
-                return "Unk04";
-            case S::kCharging:
-                return "Charging";
-            case S::kCasting:
-                return "Casting";
-            case S::kUnk07:
-                return "Unk07";
-            case S::kUnk08:
-                return "Interrupt";
-            case S::kUnk09:
-                return "Interrupt/Deselect";
-            default:
-                return "Unknown";
-        }
-    }*/
-
     void logState(RE::Actor* actor, MSCO::Magic::Hand hand) {
         const auto source = MSCO::Magic::HandToSource(hand);
         auto* caster = actor->GetMagicCaster(source);
