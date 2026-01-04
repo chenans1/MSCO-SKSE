@@ -36,7 +36,8 @@ target_precompile_headers(${PROJECT_NAME} PRIVATE
     src/inputhandler.h
     src/attackhandler.h
     src/AnimEventFramework.h
-    src/SpellCastEventHandler.h) 
+    src/SpellCastEventHandler.h
+    src/testinghooks.h) 
     
 
 # When your SKSE .dll is compiled, this will automatically copy the .dll into your mods folder.

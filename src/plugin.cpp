@@ -10,6 +10,7 @@ using namespace SKSE::stl;
 #include "attackhandler.h"
 #include "AnimEventFramework.h"
 #include "SpellCastEventHandler.h"
+#include "testinghooks.h"
 
 namespace {
     void initialize_log() {
@@ -82,6 +83,7 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
     MSCO::AttackBlockHook::Install();
     log::info("Installed AttackBlockHandler::ProcessButton hook");
     MSCO::AnimEventHook::Install();
+    MSCO::Hooks::CastSpellImmediateHook::Install();
     //InitializeEventSink();
     log::info("{} has finished loading.", plugin->GetName());
     return true;
