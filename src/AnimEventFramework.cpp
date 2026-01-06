@@ -78,18 +78,11 @@ namespace MSCO {
 
 
     //handles magicka/staff charge consumption -> returns final effectiveness mult
-    bool consumeResource(RE::MagicSystem::CastingSource source, RE::Actor* actor, RE::MagicItem* spell, float costmult, bool dualCast) {
+    bool consumeResource(RE::MagicSystem::CastingSource source, RE::Actor* actor, RE::MagicItem* spell, bool dualCast, float costmult) {
         auto* enchItem = spell->As<RE::EnchantmentItem>();
         const bool isEnchantment = enchItem != nullptr;
         if (isEnchantment) { //assume it's a staff in this case
-            float spellCost = static_cast<float>(enchItem->data.costOverride);
-
-            if (dualCast) {  //staves dont dual cast but I might want this feature someday
-                spellCost = RE::MagicFormulas::CalcDualCastCost(spellCost);
-            }
-            spellCost = spellCost * costmult;
             const bool isLeftHand = source == RE::MagicSystem::CastingSource::kLeftHand;
-
             if (auto* equippedObj = actor->GetEquippedObject(isLeftHand)) {
                 if (auto* weapon = equippedObj->As<RE::TESObjectWEAP>()) {
                     if (!weapon->IsStaff()) {
@@ -101,6 +94,14 @@ namespace MSCO {
                     return false;
                 }
             }
+
+            float spellCost = static_cast<float>(enchItem->data.costOverride);
+
+            if (dualCast) {  //staves dont dual cast but I might want this feature someday
+                spellCost = RE::MagicFormulas::CalcDualCastCost(spellCost);
+            }
+            spellCost = spellCost * costmult;
+            
             RE::ActorValueOwner* actorAV = actor->AsActorValueOwner();
             if (!actorAV) {
                 log::warn("[consumeResource] No actor value");
@@ -109,6 +110,7 @@ namespace MSCO {
             
             auto avToDamage = (isLeftHand) ? RE::ActorValue::kLeftItemCharge : RE::ActorValue::kRightItemCharge;
             if (spellCost > 0.0f) actorAV->DamageActorValue(avToDamage, spellCost);
+            return true;
 
         } else {
             RE::ActorValueOwner* actorAV = actor->AsActorValueOwner();
@@ -131,11 +133,9 @@ namespace MSCO {
                 return false;
             }
             if (spellCost > 0.0f) actorAV->DamageActorValue(RE::ActorValue::kMagicka, spellCost);
-
             return true;
         }
     }
-
 
     //uses castspell immeidate, allows spell to fire out of any node, adjust damage, adjust cost.
     //also plays the release sound
@@ -158,35 +158,18 @@ namespace MSCO {
         const int slot = (source == RE::MagicSystem::CastingSource::kLeftHand) ? RE::Actor::SlotTypes::kLeftHand : RE::Actor::SlotTypes::kRightHand;
         auto* actorCaster = rd.magicCasters[slot];
 
-        caster->state.set(RE::MagicCaster::State::kReady);  // set state, test for playreleasesound
+        caster->state.set(RE::MagicCaster::State::kReady);  // set state, test for playreleasesound don't even think this does anything but helps NPC ai function better so idk
         actorCaster->state.set(RE::MagicCaster::State::kReady);
         //set it again, but probably doesn't get unset
         //actorCaster->SetDualCasting(dualCast);
         caster->SetDualCasting(dualCast);
-        float spellCost = spell->CalculateMagickaCost(actor);
+        bool validCast = consumeResource(source, actor, spell, dualCast, costmult);
 
-        if (dualCast) {
-            spellCost = RE::MagicFormulas::CalcDualCastCost(spellCost);
-        }
-
-        spellCost = spellCost * costmult; //apply costmult param
-        if (spellCost < 0.0f) spellCost = 0.0f;
-
-        RE::ActorValueOwner* actorAV = actor->AsActorValueOwner();
-        if (!actorAV) {
-            log::warn("[MagicHandler] No actor value");
+        if (!validCast) {
+            log::info("[spellfire] invalid cast - dont fire");
             return false;
         }
 
-        float curMagicka = actorAV->GetActorValue(RE::ActorValue::kMagicka);
-        if (spellCost > 0.0f && curMagicka < spellCost) {
-            // log::info("cannot cast has {} magicka < {} cost", curMagicka, spellCost);
-            RE::HUDMenu::FlashMeter(RE::ActorValue::kMagicka);
-            return false;
-        }
-
-        if (spellCost > 0.0f) actorAV->DamageActorValue(RE::ActorValue::kMagicka, spellCost);
-        
         RE::Actor* target = nullptr;
         if (spell->GetDelivery() == RE::MagicSystem::Delivery::kSelf) {
             target = actor; // self-targeted spells: target is the actor
@@ -195,7 +178,12 @@ namespace MSCO {
             target = rd.currentCombatTarget.get().get();
             if (!target) target = actor;
         }
-
+        //send spell casting event
+        if (auto ScriptEventSourceHolder = RE::ScriptEventSourceHolder::GetSingleton()) {
+            if (auto RefHandle = actor->CreateRefHandle()) {
+                ScriptEventSourceHolder->SendSpellCastEvent(RefHandle.get(), spell->formID);
+            }
+        }
         log::info("spellfire state: {}", logState2(actor, source));
         caster->PrepareSound(RE::MagicSystem::SoundID::kRelease, spell);  // Doesn't seem to actually do anything, probably something to do with detection events?
         caster->PlayReleaseSound(spell);  // idk what this does but maybe it sends a detection event? no clue
@@ -298,11 +286,6 @@ namespace MSCO {
             //spell fire stuff now
             log::info("Intercepted MRh_SpellFire_Event.{}", payload);
             spellfire(RE::MagicSystem::CastingSource::kRightHand, actor, CurrentSpell, GetGraphBool(actor, "bMSCODualCasting"), 1.0f, 1.0f);
-            if (auto ScriptEventSourceHolder = RE::ScriptEventSourceHolder::GetSingleton()) {
-                if (auto RefHandle = actor->CreateRefHandle()) {
-                    ScriptEventSourceHolder->SendSpellCastEvent(RefHandle.get(), CurrentSpell->formID);
-                }
-            }
             return true;
         }
 
@@ -316,11 +299,6 @@ namespace MSCO {
             // spell fire stuff now
             log::info("Intercepted MLh_SpellFire_Event.{}", payload);
             spellfire(RE::MagicSystem::CastingSource::kLeftHand, actor, CurrentSpell, GetGraphBool(actor, "bMSCODualCasting"), 1.0f, 1.0f);
-            if (auto ScriptEventSourceHolder = RE::ScriptEventSourceHolder::GetSingleton()) {
-                if (auto RefHandle = actor->CreateRefHandle()) {
-                    ScriptEventSourceHolder->SendSpellCastEvent(RefHandle.get(), CurrentSpell->formID);
-                }
-            }
             return true;
         }
 
@@ -335,12 +313,12 @@ namespace MSCO {
             if (actor->IsSneaking()) return false; //check if we are sneaking nor not - don't do anything if we are
 
             //damage magicka by some very very small amount here to pause regen for balance purposes
-            RE::ActorValueOwner* actorAV = actor->AsActorValueOwner();
+            /*RE::ActorValueOwner* actorAV = actor->AsActorValueOwner();
             if (!actorAV) {
                 log::warn("[AnimEventFramework] No actor value");
             } else {
                 actorAV->DamageActorValue(RE::ActorValue::kMagicka, 0.001f);
-            }
+            }*/
 
             RE::MagicItem* CurrentSpell = GetEquippedMagicItemForHand(actor, beginHand);
             if (!CurrentSpell) {log::warn("No CurrentSpell"); return false;}
@@ -356,7 +334,7 @@ namespace MSCO {
             auto* caster = actor->GetMagicCaster(source);
             //turns out the game actually already sets the dual casting value correctly by the time we intercept begincastleft
             bool wantDualCasting = actorCaster->GetIsDualCasting();
-            consumeResource(source, actor, CurrentSpell);
+            
             if (wantDualCasting) {
                 caster->state.set(RE::MagicCaster::State::kReady);
                 actorCaster->state.set(RE::MagicCaster::State::kReady);
