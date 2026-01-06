@@ -22,7 +22,7 @@ set(SOURCES
     src/attackhandler.cpp
     src/AnimEventFramework.cpp
     src/SpellCastEventHandler.cpp
-    src/payloadhander.cpp)
+    src/payloadhandler.cpp)
 
 # add_subdirectory("C:/SKSEdev/repos/template_test/extern/CommonLibVR-NG")
 add_subdirectory(extern/CommonLibVR-ng)

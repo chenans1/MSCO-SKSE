@@ -1,8 +1,8 @@
 #pragma once
+#include "PCH.h"
 
 #include <optional>
 #include <string_view>
-#include "RE/M/MagicSystem.h"
 
 namespace {
     struct SpellFirePayload {
