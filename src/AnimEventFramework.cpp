@@ -76,7 +76,6 @@ namespace MSCO {
         }
     }
 
-
     //handles magicka/staff charge consumption -> returns final effectiveness mult
     bool consumeResource(RE::MagicSystem::CastingSource source, RE::Actor* actor, RE::MagicItem* spell, bool dualCast, float costmult) {
         auto* enchItem = spell->As<RE::EnchantmentItem>();
@@ -139,7 +138,7 @@ namespace MSCO {
         }
     }
 
-    //uses castspell immeidate, allows spell to fire out of any node, adjust damage, adjust cost.
+    //uses castspell immediate, allows spell to fire out of any node, adjust damage, adjust cost.
     //also plays the release sound
     bool spellfire(RE::MagicSystem::CastingSource source, 
         RE::Actor * actor, RE::MagicItem* spell, bool dualCast, float costmult, float magmult) {
@@ -159,12 +158,12 @@ namespace MSCO {
         auto& rd = actor->GetActorRuntimeData();
         const int slot = (source == RE::MagicSystem::CastingSource::kLeftHand) ? RE::Actor::SlotTypes::kLeftHand : RE::Actor::SlotTypes::kRightHand;
         auto* actorCaster = rd.magicCasters[slot];
-
-        caster->state.set(RE::MagicCaster::State::kReady);  // set state, test for playreleasesound don't even think this does anything but helps NPC ai function better so idk
-        actorCaster->state.set(RE::MagicCaster::State::kReady);
+        /*log::info("spellfire state before overwrite: {}", logState2(actor, source));
+        caster->state.set(RE::MagicCaster::State::kUnk04);
+        actorCaster->state.set(RE::MagicCaster::State::kUnk04);*/
         //set it again, but probably doesn't get unset
         //actorCaster->SetDualCasting(dualCast);
-        caster->SetDualCasting(dualCast);
+        actorCaster->SetDualCasting(dualCast);  // i dont think this is necessary for normal dualcasting
         bool validCast = consumeResource(source, actor, spell, dualCast, costmult);
 
         if (!validCast) {
@@ -186,13 +185,13 @@ namespace MSCO {
                 ScriptEventSourceHolder->SendSpellCastEvent(RefHandle.get(), spell->formID);
             }
         }
-        log::info("spellfire state: {}", logState2(actor, source));
-        caster->PrepareSound(RE::MagicSystem::SoundID::kRelease, spell);  // Doesn't seem to actually do anything, probably something to do with detection events?
-        caster->PlayReleaseSound(spell);  // idk what this does but maybe it sends a detection event? no clue
+        //log::info("spellfire state: {}", logState2(actor, source));
+        actorCaster->PrepareSound(RE::MagicSystem::SoundID::kRelease, spell);  // Doesn't seem to actually do anything, probably something to do with detection events?
+        actorCaster->PlayReleaseSound(spell);  // idk what this does but maybe it sends a detection event? no clue
 
         RE::BGSSoundDescriptorForm* releaseSound = MSCO::Sound::GetMGEFSound(spell);
         if (releaseSound) MSCO::Sound::play_sound(actor, releaseSound);
-        caster->CastSpellImmediate(spell,              // spell
+        actorCaster->CastSpellImmediate(spell,    // spell
                                    false,              // noHitEffectArt
                                    target,             // target
                                    magmult,            // effectiveness
@@ -260,7 +259,6 @@ namespace MSCO {
             actorCasterLeft->state.set(RE::MagicCaster::State::kNone);
             return false;
         }*/
-
 
         //on MCO_WinOpen Allow for the casting?
         if (tag == "MCO_WinOpen"sv) {
@@ -334,17 +332,22 @@ namespace MSCO {
             bool wantDualCasting = actorCaster->GetIsDualCasting();
             
             if (wantDualCasting) {
-                caster->state.set(RE::MagicCaster::State::kReady);
-                actorCaster->state.set(RE::MagicCaster::State::kReady);
                 actor->NotifyAnimationGraph("MSCO_start_dual"sv);
-                log::info("state at MSCO_start_dual: {}", logState(actor, beginHand));
+                caster->state.set(RE::MagicCaster::State::kUnk04);
+                actorCaster->state.set(RE::MagicCaster::State::kUnk04);
+                
+                //log::info("state at MSCO_start_dual: {}", logState(actor, beginHand));
+                /*RE::BGSSoundDescriptorForm* beginSound = MSCO::Sound::GetMGEFSound(CurrentSpell, RE::MagicSystem::SoundID::kCharge);
+                if (beginSound) MSCO::Sound::play_sound(actor, beginSound);*/
                 return true;
             }
 
-            caster->state.set(RE::MagicCaster::State::kReady);
-            actorCaster->state.set(RE::MagicCaster::State::kReady);
             actor->NotifyAnimationGraph((beginHand == MSCO::Magic::Hand::Right) ? "MSCO_start_right"sv: "MSCO_start_left"sv);
-            log::info("state at MSCO_start_left/right: {}", logState(actor, beginHand));
+            caster->state.set(RE::MagicCaster::State::kUnk04);
+            actorCaster->state.set(RE::MagicCaster::State::kUnk04);
+            //log::info("state at MSCO_start_left/right: {}", logState(actor, beginHand));
+            /*RE::BGSSoundDescriptorForm* beginSound = MSCO::Sound::GetMGEFSound(CurrentSpell, RE::MagicSystem::SoundID::kCharge);
+            if (beginSound) MSCO::Sound::play_sound(actor, beginSound);*/
             return true;
         }
 
