@@ -94,8 +94,8 @@ namespace MSCO {
                     return false;
                 }
             }
-
-            float spellCost = static_cast<float>(enchItem->data.costOverride);
+            float spellCost = enchItem->CalculateMagickaCost(actor);
+            //float spellCost = static_cast<float>(enchItem->data.costOverride);
 
             if (dualCast) {  //staves dont dual cast but I might want this feature someday
                 spellCost = RE::MagicFormulas::CalcDualCastCost(spellCost);
@@ -107,9 +107,11 @@ namespace MSCO {
                 log::warn("[consumeResource] No actor value");
                 return false;
             }
-            
-            auto avToDamage = (isLeftHand) ? RE::ActorValue::kLeftItemCharge : RE::ActorValue::kRightItemCharge;
-            if (spellCost > 0.0f) actorAV->DamageActorValue(avToDamage, spellCost);
+
+            if (spellCost > 0.0f) {
+                auto avToDamage = (isLeftHand) ? RE::ActorValue::kLeftItemCharge : RE::ActorValue::kRightItemCharge;
+                actorAV->DamageActorValue(avToDamage, spellCost);
+            }
             return true;
 
         } else {
@@ -195,7 +197,7 @@ namespace MSCO {
                                    target,             // target
                                    magmult,            // effectiveness
                                    false,              // hostileEffectivenessOnly
-                                   0.0f,                // magnitudeOverride dunno what this does not sure
+                                   0.0f,               // magnitudeOverride dunno what this does not sure
                                    actor               // cause (blame the caster so XP/aggro work)
         );
         //caster->SetDualCasting(false);
@@ -274,10 +276,6 @@ namespace MSCO {
         //spellfire event handlers
         if (tag == "MRh_SpellFire_Event"sv) {
             if (!GetGraphBool(actor, "bIsMSCO")) return false;
-            /*if (GetGraphBool(actor, "bMSCODualCasting")) {
-                log::info("MSCO right dual casting detected - abort for now");
-                return true;
-            }*/
             RE::MagicItem* CurrentSpell = GetEquippedMagicItemForHand(actor, MSCO::Magic::Hand::Right);
             if (!CurrentSpell) {
                 log::warn("No CurrentSpell");
@@ -340,14 +338,14 @@ namespace MSCO {
                 actorCaster->state.set(RE::MagicCaster::State::kReady);
                 actor->NotifyAnimationGraph("MSCO_start_dual"sv);
                 log::info("state at MSCO_start_dual: {}", logState(actor, beginHand));
-                return false;
+                return true;
             }
 
             caster->state.set(RE::MagicCaster::State::kReady);
             actorCaster->state.set(RE::MagicCaster::State::kReady);
             actor->NotifyAnimationGraph((beginHand == MSCO::Magic::Hand::Right) ? "MSCO_start_right"sv: "MSCO_start_left"sv);
             log::info("state at MSCO_start_left/right: {}", logState(actor, beginHand));
-            return false;
+            return true;
         }
 
         //interrupt conc spell in other hand if applicable
