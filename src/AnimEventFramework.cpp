@@ -7,6 +7,28 @@ using namespace SKSE::log;
 using namespace std::literals;
 
 namespace MSCO {
+    static const char* SafeName(const RE::NiAVObject* obj) {
+        if (!obj) return "<null>";
+        // NiAVObject usually has BSFixedString name
+        // In CommonLib: obj->name.c_str()
+        const auto& nm = obj->name;
+        const char* s = nm.c_str();
+        return (s && s[0]) ? s : "<noname>";
+    }
+
+    static void LogNodeBasic(const RE::NiAVObject* obj, std::string_view label) {
+        if (!obj) {
+            log::info("[Node] {}: <null>", label);
+            return;
+        }
+
+        // AsNode() returns NiNode* if it is a node (or nullptr)
+        auto* node = const_cast<RE::NiAVObject*>(obj)->AsNode();
+
+        log::info("[Node] {}: ptr={} name='{}' isNode={} rtti={}", label, fmt::ptr(obj), SafeName(obj), node != nullptr,
+                  fmt::ptr(obj->GetRTTI()));  // optional: RTTI pointer
+    }
+
     std::string_view logState(RE::Actor* actor, MSCO::Magic::Hand hand) {
         if (!actor) return "Invalid actor";
 
@@ -192,22 +214,41 @@ namespace MSCO {
 
         RE::BGSSoundDescriptorForm* releaseSound = MSCO::Sound::GetMGEFSound(spell);
         if (releaseSound) MSCO::Sound::play_sound(actor, releaseSound);
+
         //apply damage buff i think
+        float effectiveness = 1.0f;
         float magOverride = 0.0f;
-        if (auto* effect = spell->GetCostliestEffectItem()) {magOverride = effect->GetMagnitude() * magmult;} 
-        //log::info("spellfire event: source={}, magOverride = {}", (source == RE::MagicSystem::CastingSource::kLeftHand) ? "leftHand" : "rightHand", magOverride);
+        /*if (auto* effect = spell->GetCostliestEffectItem()) {
+            magOverride = effect->GetMagnitude() * magmult;
+        }
+        log::info("spellfire event: source={}, magOverride = {}", (source == RE::MagicSystem::CastingSource::kLeftHand) ? "leftHand" : "rightHand", magOverride);*/
 
         //test node
-        auto node = actorCaster->GetMagicNode();
-        caster->CastSpellImmediate(spell,    // spell
+        
+        /*valid node names:
+        NPC L MagicNode [LMag]
+        NPC R MagicNode [RMag]*/
+        if (auto root = actor->Get3D()) {
+            static constexpr std::string_view NodeNames[2] = {"NPC L MagicNode [LMag]"sv, "NPC R MagicNode [RMag]"sv};
+            auto bone = root->GetObjectByName(NodeNames[source == RE::MagicSystem::CastingSource::kLeftHand]);
+            if (auto output_node = bone->AsNode()) {
+                actorCaster->magicNode = output_node;
+                log::info("spellfire: replaced node");
+                auto* node = actorCaster->GetMagicNode();
+                LogNodeBasic(node, "ActorCaster magicNode");
+            }
+        }
+        
+        //actorCaster->magicNode = RE::MagicSystem::CastingSource::kLeftHand;
+        actorCaster->CastSpellImmediate(spell,    // spell
                                    false,              // noHitEffectArt
                                    target,             // target
-                                   1.0f,            // effectiveness
-                                   magOverride,  // hostileEffectivenessOnly
-                                   0.0f,               // magnitudeOverride dunno what this does not sure
+                                   effectiveness,  // effectiveness
+                                   false,  // hostileEffectivenessOnly
+                                   magOverride,    // magnitudeOverride dunno what this does not sure
                                    actor               // cause (blame the caster so XP/aggro work)
         );
-        //caster->SetDualCasting(false);
+        caster->SetDualCasting(false);
         return true;
     }
 
