@@ -10,7 +10,7 @@ using namespace SKSE;
 using namespace SKSE::log;
 using namespace std::literals;
 
-namespace {
+namespace MSCO {
 
     //helpers
     bool IsSep(char c) { return c == ' ' || c == '\t' || c == ',' || c == ';'; }

@@ -4,7 +4,7 @@
 #include <optional>
 #include <string_view>
 
-namespace {
+namespace MSCO {
     struct SpellFirePayload {
         std::optional<RE::MagicSystem::CastingSource> src;
         std::optional<float> costMult;

@@ -1,5 +1,6 @@
 #include "PCH.h"
 #include "AnimEventFramework.h"
+#include "PayloadHandler.h"
 
 using namespace SKSE;
 using namespace SKSE::log;
@@ -191,11 +192,18 @@ namespace MSCO {
 
         RE::BGSSoundDescriptorForm* releaseSound = MSCO::Sound::GetMGEFSound(spell);
         if (releaseSound) MSCO::Sound::play_sound(actor, releaseSound);
-        actorCaster->CastSpellImmediate(spell,    // spell
+        //apply damage buff i think
+        float magOverride = 0.0f;
+        if (auto* effect = spell->GetCostliestEffectItem()) {magOverride = effect->GetMagnitude() * magmult;} 
+        //log::info("spellfire event: source={}, magOverride = {}", (source == RE::MagicSystem::CastingSource::kLeftHand) ? "leftHand" : "rightHand", magOverride);
+
+        //test node
+        auto node = actorCaster->GetMagicNode();
+        caster->CastSpellImmediate(spell,    // spell
                                    false,              // noHitEffectArt
                                    target,             // target
-                                   magmult,            // effectiveness
-                                   false,              // hostileEffectivenessOnly
+                                   1.0f,            // effectiveness
+                                   magOverride,  // hostileEffectivenessOnly
                                    0.0f,               // magnitudeOverride dunno what this does not sure
                                    actor               // cause (blame the caster so XP/aggro work)
         );
@@ -280,8 +288,15 @@ namespace MSCO {
                 return true;
             }
             //spell fire stuff now
-            log::info("Intercepted MRh_SpellFire_Event.{}", payload);
-            spellfire(RE::MagicSystem::CastingSource::kRightHand, actor, CurrentSpell, GetGraphBool(actor, "bMSCODualCasting"), 1.0f, 1.0f);
+            //log::info("Intercepted MRh_SpellFire_Event.{}", payload);
+
+            const auto parsed = MSCO::ParseSpellFire(payload);
+            auto source = parsed.src.value_or(RE::MagicSystem::CastingSource::kRightHand);
+            auto costMult = parsed.costMult.value_or(1.0f);
+            auto magMult = parsed.magMult.value_or(1.0f);
+            log::info("MRh_SpellFire payload='{}' -> src={} cost={} mag={}", 
+                payload, std::to_underlying(source), costMult, magMult);
+            spellfire(source, actor, CurrentSpell, GetGraphBool(actor, "bMSCODualCasting"), costMult, magMult);
             return true;
         }
 
@@ -293,8 +308,16 @@ namespace MSCO {
                 return true;
             }
             // spell fire stuff now
-            log::info("Intercepted MLh_SpellFire_Event.{}", payload);
-            spellfire(RE::MagicSystem::CastingSource::kLeftHand, actor, CurrentSpell, GetGraphBool(actor, "bMSCODualCasting"), 1.0f, 1.0f);
+            //log::info("Intercepted MLh_SpellFire_Event.{}", payload);
+
+            const auto parsed = ParseSpellFire(payload);
+            auto source = parsed.src.value_or(RE::MagicSystem::CastingSource::kLeftHand);
+            auto costMult = parsed.costMult.value_or(1.0f);
+            auto magMult = parsed.magMult.value_or(1.0f);
+            log::info("MLh_SpellFire payload='{}' -> src={} cost={} mag={}", payload,
+                      std::to_underlying(source), costMult, magMult);
+            //spellfire(RE::MagicSystem::CastingSource::kLeftHand, actor, CurrentSpell, GetGraphBool(actor, "bMSCODualCasting"), 1.0f, 1.0f);
+            spellfire(source, actor, CurrentSpell, GetGraphBool(actor, "bMSCODualCasting"), costMult, magMult);
             return true;
         }
 
