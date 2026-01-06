@@ -33,12 +33,13 @@ namespace MSCO::Sound {
             log::warn("GetMGEFSound called on null magic item");
             return nullptr;
         }
-        auto* spell = magic->As<RE::SpellItem>();
+       /* auto* spell = magic->As<RE::SpellItem>();
         if (!spell) {
             log::warn("auto* spell = magic->As<RE::SpellItem>(); null");
             return nullptr;
-        }
-        for (auto& effect : spell->effects) {
+        }*/
+        //for (auto& effect : spell->effects) {
+        for (auto& effect : magic->effects) {
             if (!effect || !effect->baseEffect) {
                 continue;  // only grab the sound from the baseffect
             }
