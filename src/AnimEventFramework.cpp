@@ -76,6 +76,67 @@ namespace MSCO {
         }
     }
 
+
+    //handles magicka/staff charge consumption -> returns final effectiveness mult
+    bool consumeResource(RE::MagicSystem::CastingSource source, RE::Actor* actor, RE::MagicItem* spell, float costmult, bool dualCast) {
+        auto* enchItem = spell->As<RE::EnchantmentItem>();
+        const bool isEnchantment = enchItem != nullptr;
+        if (isEnchantment) { //assume it's a staff in this case
+            float spellCost = static_cast<float>(enchItem->data.costOverride);
+
+            if (dualCast) {  //staves dont dual cast but I might want this feature someday
+                spellCost = RE::MagicFormulas::CalcDualCastCost(spellCost);
+            }
+            spellCost = spellCost * costmult;
+            const bool isLeftHand = source == RE::MagicSystem::CastingSource::kLeftHand;
+
+            if (auto* equippedObj = actor->GetEquippedObject(isLeftHand)) {
+                if (auto* weapon = equippedObj->As<RE::TESObjectWEAP>()) {
+                    if (!weapon->IsStaff()) {
+                        log::warn("[consumeResource] Not staff, ignore");
+                        return false;
+                    }
+                } else {
+                    log::warn("[consumeResource] No Weapon on Enchantment, ignore");
+                    return false;
+                }
+            }
+            RE::ActorValueOwner* actorAV = actor->AsActorValueOwner();
+            if (!actorAV) {
+                log::warn("[consumeResource] No actor value");
+                return false;
+            }
+            
+            auto avToDamage = (isLeftHand) ? RE::ActorValue::kLeftItemCharge : RE::ActorValue::kRightItemCharge;
+            if (spellCost > 0.0f) actorAV->DamageActorValue(avToDamage, spellCost);
+
+        } else {
+            RE::ActorValueOwner* actorAV = actor->AsActorValueOwner();
+            if (!actorAV) {
+                log::warn("[consumeResource] No actor value");
+                return false;
+            }
+            float spellCost = spell->CalculateMagickaCost(actor);
+
+            if (dualCast) {
+                spellCost = RE::MagicFormulas::CalcDualCastCost(spellCost);
+            }
+
+            spellCost = spellCost * costmult;  // apply costmult param
+            if (spellCost < 0.0f) spellCost = 0.0f;
+            float curMagicka = actorAV->GetActorValue(RE::ActorValue::kMagicka);
+            if (spellCost > 0.0f && curMagicka < spellCost) {
+                // log::info("cannot cast has {} magicka < {} cost", curMagicka, spellCost);
+                RE::HUDMenu::FlashMeter(RE::ActorValue::kMagicka);
+                return false;
+            }
+            if (spellCost > 0.0f) actorAV->DamageActorValue(RE::ActorValue::kMagicka, spellCost);
+
+            return true;
+        }
+    }
+
+
     //uses castspell immeidate, allows spell to fire out of any node, adjust damage, adjust cost.
     //also plays the release sound
     bool spellfire(RE::MagicSystem::CastingSource source, 
@@ -295,7 +356,7 @@ namespace MSCO {
             auto* caster = actor->GetMagicCaster(source);
             //turns out the game actually already sets the dual casting value correctly by the time we intercept begincastleft
             bool wantDualCasting = actorCaster->GetIsDualCasting();
-            
+            consumeResource(source, actor, CurrentSpell);
             if (wantDualCasting) {
                 caster->state.set(RE::MagicCaster::State::kReady);
                 actorCaster->state.set(RE::MagicCaster::State::kReady);
