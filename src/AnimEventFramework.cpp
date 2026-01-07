@@ -164,7 +164,8 @@ namespace MSCO {
     //uses castspell immediate, allows spell to fire out of any node, adjust damage, adjust cost.
     //also plays the release sound
     bool spellfire(RE::MagicSystem::CastingSource source, 
-        RE::Actor * actor, RE::MagicItem* spell, bool dualCast, float costmult, float magmult) {
+        RE::Actor* actor, RE::MagicItem* spell, bool dualCast,
+                   float costmult, float magmult, RE::MagicSystem::CastingSource outputSource) {
         if (!actor) {
             log::warn("No Actor for spellfire()");
             return false;
@@ -181,11 +182,7 @@ namespace MSCO {
         auto& rd = actor->GetActorRuntimeData();
         const int slot = (source == RE::MagicSystem::CastingSource::kLeftHand) ? RE::Actor::SlotTypes::kLeftHand : RE::Actor::SlotTypes::kRightHand;
         auto* actorCaster = rd.magicCasters[slot];
-        /*log::info("spellfire state before overwrite: {}", logState2(actor, source));
-        caster->state.set(RE::MagicCaster::State::kUnk04);
-        actorCaster->state.set(RE::MagicCaster::State::kUnk04);*/
-        //set it again, but probably doesn't get unset
-        //actorCaster->SetDualCasting(dualCast);
+        
         actorCaster->SetDualCasting(dualCast);  // i dont think this is necessary for normal dualcasting
         bool validCast = consumeResource(source, actor, spell, dualCast, costmult);
 
@@ -220,8 +217,8 @@ namespace MSCO {
         float magOverride = 0.0f;
         /*if (auto* effect = spell->GetCostliestEffectItem()) {
             magOverride = effect->GetMagnitude() * magmult;
-        }
-        log::info("spellfire event: source={}, magOverride = {}", (source == RE::MagicSystem::CastingSource::kLeftHand) ? "leftHand" : "rightHand", magOverride);*/
+        }*/
+        //log::info("spellfire event: source={}, magOverride = {}", (source == RE::MagicSystem::CastingSource::kLeftHand) ? "leftHand" : "rightHand", magOverride);
 
         //test node
         
@@ -230,12 +227,14 @@ namespace MSCO {
         NPC R MagicNode [RMag]*/
         if (auto root = actor->Get3D()) {
             static constexpr std::string_view NodeNames[2] = {"NPC L MagicNode [LMag]"sv, "NPC R MagicNode [RMag]"sv};
-            auto bone = root->GetObjectByName(NodeNames[source == RE::MagicSystem::CastingSource::kLeftHand]);
+            const auto& nodeName = (outputSource == RE::MagicSystem::CastingSource::kLeftHand) ? NodeNames[0]   // LMag
+                                                                                               : NodeNames[1];  // RMag
+            auto bone = root->GetObjectByName(nodeName);
             if (auto output_node = bone->AsNode()) {
                 actorCaster->magicNode = output_node;
-                log::info("spellfire: replaced node");
+                /*log::info("spellfire: replaced node");
                 auto* node = actorCaster->GetMagicNode();
-                LogNodeBasic(node, "ActorCaster magicNode");
+                LogNodeBasic(node, "ActorCaster magicNode");*/
             }
         }
         
@@ -243,12 +242,12 @@ namespace MSCO {
         actorCaster->CastSpellImmediate(spell,    // spell
                                    false,              // noHitEffectArt
                                    target,             // target
-                                   effectiveness,  // effectiveness
+                                   1.0f,  // effectiveness
                                    false,  // hostileEffectivenessOnly
-                                   magOverride,    // magnitudeOverride dunno what this does not sure
+                                   0.0f,  // magnitudeOverride dunno what this does not sure
                                    actor               // cause (blame the caster so XP/aggro work)
         );
-        caster->SetDualCasting(false);
+        //caster->SetDualCasting(false);
         return true;
     }
 
@@ -332,12 +331,12 @@ namespace MSCO {
             //log::info("Intercepted MRh_SpellFire_Event.{}", payload);
 
             const auto parsed = MSCO::ParseSpellFire(payload);
-            auto source = parsed.src.value_or(RE::MagicSystem::CastingSource::kRightHand);
+            auto output_source = parsed.src.value_or(RE::MagicSystem::CastingSource::kRightHand);
             auto costMult = parsed.costMult.value_or(1.0f);
             auto magMult = parsed.magMult.value_or(1.0f);
-            log::info("MRh_SpellFire payload='{}' -> src={} cost={} mag={}", 
-                payload, std::to_underlying(source), costMult, magMult);
-            spellfire(source, actor, CurrentSpell, GetGraphBool(actor, "bMSCODualCasting"), costMult, magMult);
+            log::info("MRh_SpellFire payload='{}' -> src={} cost={} mag={}", payload, std::to_underlying(output_source), costMult, magMult);
+            spellfire(RE::MagicSystem::CastingSource::kRightHand, actor, CurrentSpell,
+                      GetGraphBool(actor, "bMSCODualCasting"), costMult, magMult, output_source);
             return true;
         }
 
@@ -352,13 +351,13 @@ namespace MSCO {
             //log::info("Intercepted MLh_SpellFire_Event.{}", payload);
 
             const auto parsed = ParseSpellFire(payload);
-            auto source = parsed.src.value_or(RE::MagicSystem::CastingSource::kLeftHand);
+            auto output_source = parsed.src.value_or(RE::MagicSystem::CastingSource::kLeftHand);
             auto costMult = parsed.costMult.value_or(1.0f);
             auto magMult = parsed.magMult.value_or(1.0f);
-            log::info("MLh_SpellFire payload='{}' -> src={} cost={} mag={}", payload,
-                      std::to_underlying(source), costMult, magMult);
+            log::info("MLh_SpellFire payload='{}' -> src={} cost={} mag={}", payload, std::to_underlying(output_source), costMult, magMult);
             //spellfire(RE::MagicSystem::CastingSource::kLeftHand, actor, CurrentSpell, GetGraphBool(actor, "bMSCODualCasting"), 1.0f, 1.0f);
-            spellfire(source, actor, CurrentSpell, GetGraphBool(actor, "bMSCODualCasting"), costMult, magMult);
+            spellfire(RE::MagicSystem::CastingSource::kLeftHand, actor, CurrentSpell,
+                      GetGraphBool(actor, "bMSCODualCasting"), costMult, magMult, output_source);
             return true;
         }
 
