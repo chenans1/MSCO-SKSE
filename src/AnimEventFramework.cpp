@@ -298,16 +298,6 @@ namespace MSCO {
             return false;
         }
 
-        /*if (tag == "MSCOExit"sv) {
-            auto& rd = actor->GetActorRuntimeData();
-            auto* actorCasterRight = rd.magicCasters[RE::Actor::SlotTypes::kRightHand];
-            auto* actorCasterLeft = rd.magicCasters[RE::Actor::SlotTypes::kLeftHand];
-            if (!actorCasterRight || !actorCasterLeft) return false;
-            actorCasterRight->state.set(RE::MagicCaster::State::kNone);
-            actorCasterLeft->state.set(RE::MagicCaster::State::kNone);
-            return false;
-        }*/
-
         //on MCO_WinOpen Allow for the casting?
         if (tag == "MCO_WinOpen"sv) {
             actor->NotifyAnimationGraph("CastOkStart"sv);
@@ -320,46 +310,46 @@ namespace MSCO {
         }
 
         //spellfire event handlers
-        if (tag == "MRh_SpellFire_Event"sv) {
-            if (!GetGraphBool(actor, "bIsMSCO")) return false;
-            RE::MagicItem* CurrentSpell = GetEquippedMagicItemForHand(actor, MSCO::Magic::Hand::Right);
-            if (!CurrentSpell) {
-                log::warn("No CurrentSpell");
-                return true;
-            }
-            //spell fire stuff now
-            //log::info("Intercepted MRh_SpellFire_Event.{}", payload);
+        //if (tag == "MRh_SpellFire_Event"sv) {
+        //    if (!GetGraphBool(actor, "bIsMSCO")) return false;
+        //    RE::MagicItem* CurrentSpell = GetEquippedMagicItemForHand(actor, MSCO::Magic::Hand::Right);
+        //    if (!CurrentSpell) {
+        //        log::warn("No CurrentSpell");
+        //        return true;
+        //    }
+        //    //spell fire stuff now
+        //    //log::info("Intercepted MRh_SpellFire_Event.{}", payload);
 
-            const auto parsed = MSCO::ParseSpellFire(payload);
-            auto output_source = parsed.src.value_or(RE::MagicSystem::CastingSource::kRightHand);
-            auto costMult = parsed.costMult.value_or(1.0f);
-            auto magMult = parsed.magMult.value_or(1.0f);
-            log::info("MRh_SpellFire payload='{}' -> src={} cost={} mag={}", payload, std::to_underlying(output_source), costMult, magMult);
-            spellfire(RE::MagicSystem::CastingSource::kRightHand, actor, CurrentSpell,
-                      GetGraphBool(actor, "bMSCODualCasting"), costMult, magMult, output_source);
-            return true;
-        }
+        //    const auto parsed = MSCO::ParseSpellFire(payload);
+        //    auto output_source = parsed.src.value_or(RE::MagicSystem::CastingSource::kRightHand);
+        //    auto costMult = parsed.costMult.value_or(1.0f);
+        //    auto magMult = parsed.magMult.value_or(1.0f);
+        //    log::info("MRh_SpellFire payload='{}' -> src={} cost={} mag={}", payload, std::to_underlying(output_source), costMult, magMult);
+        //    spellfire(RE::MagicSystem::CastingSource::kRightHand, actor, CurrentSpell,
+        //              GetGraphBool(actor, "bMSCODualCasting"), costMult, magMult, output_source);
+        //    return true;
+        //}
 
-        if (tag == "MLh_SpellFire_Event"sv) {
-            if (!GetGraphBool(actor, "bIsMSCO")) return false;
-            RE::MagicItem* CurrentSpell = GetEquippedMagicItemForHand(actor, MSCO::Magic::Hand::Left);
-            if (!CurrentSpell) {
-                log::warn("No CurrentSpell");
-                return true;
-            }
-            // spell fire stuff now
-            //log::info("Intercepted MLh_SpellFire_Event.{}", payload);
+        //if (tag == "MLh_SpellFire_Event"sv) {
+        //    if (!GetGraphBool(actor, "bIsMSCO")) return false;
+        //    RE::MagicItem* CurrentSpell = GetEquippedMagicItemForHand(actor, MSCO::Magic::Hand::Left);
+        //    if (!CurrentSpell) {
+        //        log::warn("No CurrentSpell");
+        //        return true;
+        //    }
+        //    // spell fire stuff now
+        //    //log::info("Intercepted MLh_SpellFire_Event.{}", payload);
 
-            const auto parsed = ParseSpellFire(payload);
-            auto output_source = parsed.src.value_or(RE::MagicSystem::CastingSource::kLeftHand);
-            auto costMult = parsed.costMult.value_or(1.0f);
-            auto magMult = parsed.magMult.value_or(1.0f);
-            log::info("MLh_SpellFire payload='{}' -> src={} cost={} mag={}", payload, std::to_underlying(output_source), costMult, magMult);
-            //spellfire(RE::MagicSystem::CastingSource::kLeftHand, actor, CurrentSpell, GetGraphBool(actor, "bMSCODualCasting"), 1.0f, 1.0f);
-            spellfire(RE::MagicSystem::CastingSource::kLeftHand, actor, CurrentSpell,
-                      GetGraphBool(actor, "bMSCODualCasting"), costMult, magMult, output_source);
-            return true;
-        }
+        //    const auto parsed = ParseSpellFire(payload);
+        //    auto output_source = parsed.src.value_or(RE::MagicSystem::CastingSource::kLeftHand);
+        //    auto costMult = parsed.costMult.value_or(1.0f);
+        //    auto magMult = parsed.magMult.value_or(1.0f);
+        //    log::info("MLh_SpellFire payload='{}' -> src={} cost={} mag={}", payload, std::to_underlying(output_source), costMult, magMult);
+        //    //spellfire(RE::MagicSystem::CastingSource::kLeftHand, actor, CurrentSpell, GetGraphBool(actor, "bMSCODualCasting"), 1.0f, 1.0f);
+        //    spellfire(RE::MagicSystem::CastingSource::kLeftHand, actor, CurrentSpell,
+        //              GetGraphBool(actor, "bMSCODualCasting"), costMult, magMult, output_source);
+        //    return true;
+        //}
 
         //BeginCastLeft/Right handler. Handles button suppresion and MSCO inputs
         MSCO::Magic::Hand beginHand{};
@@ -396,22 +386,22 @@ namespace MSCO {
             
             if (wantDualCasting) {
                 actor->NotifyAnimationGraph("MSCO_start_dual"sv);
-                caster->state.set(RE::MagicCaster::State::kUnk04);
-                actorCaster->state.set(RE::MagicCaster::State::kUnk04);
+                /*caster->state.set(RE::MagicCaster::State::kUnk04);
+                actorCaster->state.set(RE::MagicCaster::State::kUnk04);*/
                 
                 //log::info("state at MSCO_start_dual: {}", logState(actor, beginHand));
                 /*RE::BGSSoundDescriptorForm* beginSound = MSCO::Sound::GetMGEFSound(CurrentSpell, RE::MagicSystem::SoundID::kCharge);
                 if (beginSound) MSCO::Sound::play_sound(actor, beginSound);*/
-                return true;
+                return false;
             }
 
             actor->NotifyAnimationGraph((beginHand == MSCO::Magic::Hand::Right) ? "MSCO_start_right"sv: "MSCO_start_left"sv);
-            caster->state.set(RE::MagicCaster::State::kUnk04);
-            actorCaster->state.set(RE::MagicCaster::State::kUnk04);
+            /*caster->state.set(RE::MagicCaster::State::kUnk04);
+            actorCaster->state.set(RE::MagicCaster::State::kUnk04);*/
             //log::info("state at MSCO_start_left/right: {}", logState(actor, beginHand));
             /*RE::BGSSoundDescriptorForm* beginSound = MSCO::Sound::GetMGEFSound(CurrentSpell, RE::MagicSystem::SoundID::kCharge);
             if (beginSound) MSCO::Sound::play_sound(actor, beginSound);*/
-            return true;
+            return false;
         }
 
         //interrupt conc spell in other hand if applicable
