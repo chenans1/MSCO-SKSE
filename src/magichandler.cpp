@@ -1,6 +1,5 @@
 #include "PCH.h"
 #include "magichandler.h"
-#include "soundhandler.h"
 
 using namespace RE;
 using namespace SKSE;
@@ -114,9 +113,15 @@ namespace MSCO::Magic {
         float effectiveness = 1.0f;
         float magnitudeOverride = 0.0f;
         //fetch sound and play
-        RE::BGSSoundDescriptorForm* releaseSound = MSCO::Sound::GetMGEFSound(spell);
-        if (releaseSound) MSCO::Sound::play_sound(actor, releaseSound);
-        caster->PlayReleaseSound(spell); //idk what this does but maybe it sends a detection event? no clue
+        /*RE::BGSSoundDescriptorForm* releaseSound = MSCO::Sound::GetMGEFSound(spell);
+        if (releaseSound) MSCO::Sound::play_sound(actor, releaseSound);*/
+        const int slot =
+            (hand == MSCO::Magic::Hand::Left) ? RE::Actor::SlotTypes::kLeftHand : RE::Actor::SlotTypes::kRightHand;
+
+        auto* actorCaster = rd.magicCasters[slot];
+        actorCaster->PrepareSound(RE::MagicSystem::SoundID::kRelease, spell); //Doesn't seem to actually do anything, probably something to do with detection events?
+        actorCaster->PlayReleaseSound(spell);  // idk what this does but maybe it sends a detection event? no clue
+
         caster->CastSpellImmediate(spell,              // spell
                                    false,              // noHitEffectArt
                                    target,            // target
@@ -125,10 +130,11 @@ namespace MSCO::Magic {
                                    magnitudeOverride,  // magnitudeOverride
                                    actor               // cause (blame the caster so XP/aggro work)
         );
-
-        //caster->SpellCast();
+        
+        //actorCaster->SpellCast(true, 1 ,spell);
         //log::info("SUCESSFULLY CASTED");
         caster->SetDualCasting(false); //just in case
+        
         return true;
     }
 }

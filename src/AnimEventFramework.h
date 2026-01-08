@@ -27,11 +27,9 @@ namespace MSCO {
         
         static RE::MagicItem* GetEquippedMagicItemForHand(RE::Actor* actor, MSCO::Magic::Hand hand);
         static RE::MagicItem* GetCurrentlyCastingMagicItem(RE::Actor* actor, MSCO::Magic::Hand hand);
-        static bool isMagicItemConcentration(RE::MagicItem* item);
        
         static bool IsMSCOEvent(const RE::BSFixedString& tag, MSCO::Magic::Hand& outHand);
         static bool IsBeginCastEvent(const RE::BSFixedString& tag, MSCO::Magic::Hand& outHand);
-        static bool IsHandFireAndForget(RE::Actor* actor, MSCO::Magic::Hand hand);
         static void InterruptHand(RE::Actor* actor, MSCO::Magic::Hand hand);
         static bool GetGraphBool(RE::Actor* actor, const char* name, bool defaultValue = false);
 

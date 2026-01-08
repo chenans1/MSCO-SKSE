@@ -5,11 +5,9 @@ using namespace SKSE::stl;
 #include <Windows.h>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/msvc_sink.h>
-#include "animeventhandler.h"
 #include "inputhandler.h"
 #include "attackhandler.h"
 #include "AnimEventFramework.h"
-#include "SpellCastEventHandler.h"
 
 namespace {
     void initialize_log() {
@@ -40,37 +38,37 @@ namespace {
         spdlog::set_default_logger(std::move(loggerPtr));
     }
 
-    void InitializeEventSink() {
-        GetMessagingInterface()->RegisterListener([](MessagingInterface::Message* message) {
-            switch (message->type) {
-                //case SKSE::MessagingInterface::kInputLoaded: {
-                //    auto* inputMgr = RE::BSInputDeviceManager::GetSingleton();
-                //    if (!inputMgr) {
-                //        log::warn("BSInputDeviceManager not available in kInputLoaded");
-                //        //RE::ConsoleLog::GetSingleton()->Print("BSInputDeviceManager not available in kInputLoaded");
-                //        break;
-                //    }
+    //void InitializeEventSink() {
+    //    GetMessagingInterface()->RegisterListener([](MessagingInterface::Message* message) {
+    //        switch (message->type) {
+    //            //case SKSE::MessagingInterface::kInputLoaded: {
+    //            //    auto* inputMgr = RE::BSInputDeviceManager::GetSingleton();
+    //            //    if (!inputMgr) {
+    //            //        log::warn("BSInputDeviceManager not available in kInputLoaded");
+    //            //        //RE::ConsoleLog::GetSingleton()->Print("BSInputDeviceManager not available in kInputLoaded");
+    //            //        break;
+    //            //    }
 
-                //    inputMgr->AddEventSink(&MSCO::InputHandler::GetSingleton());
-                //    log::info("Registered MSCO InputEventHandler");
-                //    //RE::ConsoleLog::GetSingleton()->Print("Registered MSCO InputEventHandler");
-                //    break;
-                //}
-                case SKSE::MessagingInterface::kPostLoadGame: {
-                    auto* eventSource = RE::ScriptEventSourceHolder::GetSingleton();
-                    if (eventSource) {
-                        eventSource->AddEventSink<RE::TESSpellCastEvent>(MSCO::SpellCastEventHandler::GetSingleton());
-                        log::info("Registered SpellCastEventHandler");
-                    } else {
-                        log::warn("Failed to get ScriptEventSourceHolder for SpellCastEventHandler");
-                    }
-                    break;
-                }
-                default:
-                    break;
-            }
-        });
-    }
+    //            //    inputMgr->AddEventSink(&MSCO::InputHandler::GetSingleton());
+    //            //    log::info("Registered MSCO InputEventHandler");
+    //            //    //RE::ConsoleLog::GetSingleton()->Print("Registered MSCO InputEventHandler");
+    //            //    break;
+    //            //}
+    //            case SKSE::MessagingInterface::kPostLoadGame: {
+    //                auto* eventSource = RE::ScriptEventSourceHolder::GetSingleton();
+    //                if (eventSource) {
+    //                    eventSource->AddEventSink<RE::TESSpellCastEvent>(MSCO::SpellCastEventHandler::GetSingleton());
+    //                    log::info("Registered SpellCastEventHandler");
+    //                } else {
+    //                    log::warn("Failed to get ScriptEventSourceHolder for SpellCastEventHandler");
+    //                }
+    //                break;
+    //            }
+    //            default:
+    //                break;
+    //        }
+    //    });
+    //}
 }
 SKSEPluginLoad(const SKSE::LoadInterface* skse) {
     initialize_log();

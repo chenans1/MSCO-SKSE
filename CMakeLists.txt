@@ -15,13 +15,9 @@ set(OUTPUT_FOLDER "D:/Skyrim SE MO2/mods/MSCO")
 
 set(SOURCES
     src/plugin.cpp
-    src/animeventhandler.cpp
     src/magichandler.cpp
-    src/soundhandler.cpp
-    src/inputhandler.cpp
     src/attackhandler.cpp
     src/AnimEventFramework.cpp
-    src/SpellCastEventHandler.cpp
     src/payloadhandler.cpp)
 
 # add_subdirectory("C:/SKSEdev/repos/template_test/extern/CommonLibVR-NG")
@@ -31,14 +27,9 @@ add_commonlibsse_plugin(${PROJECT_NAME} SOURCES ${SOURCES}) # <--- specifies plu
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23) # <--- use C++23 standard
 target_precompile_headers(${PROJECT_NAME} PRIVATE 
     src/PCH.h
-    src/animeventhandler.h
     src/magichandler.h
-    src/soundhandler.h
-    src/inputhandler.h
     src/attackhandler.h
     src/AnimEventFramework.h
-    src/SpellCastEventHandler.h
-    src/testinghooks.h
     src/payloadhandler.h) 
     
 
