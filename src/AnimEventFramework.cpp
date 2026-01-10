@@ -160,15 +160,39 @@ namespace MSCO {
 
         //if We see the "CastingStateExit" Event we interrupt/clear both hands -> reset nodes
         if (tag == "CastingStateExit"sv) {
-            InterruptHand(actor, MSCO::Magic::Hand::Right);
-            InterruptHand(actor, MSCO::Magic::Hand::Left);
+            RE::MagicItem* leftSpell = GetEquippedMagicItemForHand(actor, MSCO::Magic::Hand::Left);
+            //don't interrupt since this is the exit on dual casting state, and don't process anything
+            if (leftSpell && leftSpell->IsTwoHanded()) {
+                //log::info("CastingStateExit: Ritual Spell, ignore");
+                return false;
+            }
             auto& rd = actor->GetActorRuntimeData();
             const int leftSlot = RE::Actor::SlotTypes::kLeftHand;
             const int rightSlot = RE::Actor::SlotTypes::kRightHand;
             auto* actorCasterLeft = rd.magicCasters[leftSlot];
             auto* actorCasterRight = rd.magicCasters[rightSlot];
+            
+            InterruptHand(actor, MSCO::Magic::Hand::Right);
+            InterruptHand(actor, MSCO::Magic::Hand::Left);
             actorCasterLeft->ClearMagicNode();
             actorCasterRight->ClearMagicNode();
+
+            //reset all casting graph variables here
+            if (actor->SetGraphVariableBool("IsCastingDual", false)) {
+                //log::info("CastingStateExit: Successfully set IsCastingDual to false");
+            } else {
+                log::warn("CastingStateExit: Failed to set IsCastingDual to false");
+            }
+            if (actor->SetGraphVariableBool("IsCastingRight", false)) {
+                //log::info("CastingStateExit: Successfully set IsCastingRight to false");
+            } else {
+                log::warn("CastingStateExit: Failed to set IsCastingRight to false");
+            }
+            if (actor->SetGraphVariableBool("IsCastingLeft", false)) {
+                //log::info("CastingStateExit: Successfully set IsCastingLeft to false");
+            } else {
+                log::warn("CastingStateExit: Failed to set IsCastingLeft to false");
+            }
             //replaceNode(actor, RE::MagicSystem::CastingSource::kLeftHand, RE::MagicSystem::CastingSource::kLeftHand);
             //replaceNode(actor, RE::MagicSystem::CastingSource::kRightHand, RE::MagicSystem::CastingSource::kRightHand); //need to force reset the node because the game doesnt
             return false;
@@ -230,8 +254,19 @@ namespace MSCO {
 
             RE::MagicItem* CurrentSpell = GetEquippedMagicItemForHand(actor, beginHand);
             if (!CurrentSpell) {log::warn("No CurrentSpell"); return false;}
+            //GOING TO IGNORE RITUAL SPELLS FOR NOW
+            if (CurrentSpell->IsTwoHanded()) {
+                //log::info("Equipped Spell is Ritual, Ignore");
+                return false;
+            }
+
             //bool isfnf = (CurrentSpell->GetCastingType() == RE::MagicSystem::CastingType::kFireAndForget);
-            if (CurrentSpell->GetCastingType() != RE::MagicSystem::CastingType::kFireAndForget) return false;
+            
+            if (CurrentSpell->GetCastingType() != RE::MagicSystem::CastingType::kFireAndForget &&
+                CurrentSpell->GetCastingType() != RE::MagicSystem::CastingType::kScroll) {
+                return false;
+            }
+                
 
             auto& rd = actor->GetActorRuntimeData();
             const int slot = (beginHand == MSCO::Magic::Hand::Left) ? RE::Actor::SlotTypes::kLeftHand : RE::Actor::SlotTypes::kRightHand;
@@ -244,6 +279,11 @@ namespace MSCO {
             bool wantDualCasting = actorCaster->GetIsDualCasting();
             
             if (wantDualCasting) { 
+                if (actor->SetGraphVariableBool("IsCastingDual", true)) {
+                    //log::info("MSCO_start_dual: Successfully set IsCastingDual to true");
+                } else {
+                    log::warn("MSCO_start_dual: Failed to set IsCastingDual to true");
+                }
                 actor->NotifyAnimationGraph("MSCO_start_dual"sv);
                 return false;
             }
@@ -262,14 +302,35 @@ namespace MSCO {
                                                               ? RE::MagicSystem::CastingSource::kLeftHand
                                                               : RE::MagicSystem::CastingSource::kRightHand);
                 //i think this works not sure
-                if (otherCaster->state.get() >= RE::MagicCaster::State::kUnk04 &&
-                    otherCaster->state.get() < RE::MagicCaster::State::kUnk07) {
+                //need to check that current spell is two handed, also needs both MRH and mlh spell fire. It's possible it also needs order, but I'm not sure
+                //if (otherCaster->state.get() >= RE::MagicCaster::State::kUnk04 || CurrentSpell->IsTwoHanded()) {
+                if (otherCaster->state.get() >= RE::MagicCaster::State::kUnk04) {
+
                     /*log::info("otherCaster State = {}, sending MSCO_start_lr",
                         logState2(actor, (beginHand == MSCO::Magic::Hand::Left) 
                             ? RE::MagicSystem::CastingSource::kLeftHand : 
                             RE::MagicSystem::CastingSource::kRightHand));*/
+                    if (actor->SetGraphVariableBool("IsCastingRight", true)) {
+                        //log::info("MSCO_start_lr: Successfully set IsCastingRight to true");
+                    } else {
+                        log::warn("MSCO_start_lr: Failed to set IsCastingRight to true");
+                    }
+                    if (actor->SetGraphVariableBool("IsCastingLeft", true)) {
+                        //log::info("MSCO_start_lr: Successfully set IsCastingLeft to true");
+                    } else {
+                        log::warn("MSCO_start_lr: Failed to set IsCastingLeft to true");
+                    }
                     actor->NotifyAnimationGraph("MSCO_start_lr"sv);
                 } else {
+                    if (actor->SetGraphVariableBool((beginHand == MSCO::Magic::Hand::Right) ? "IsCastingRight" : "IsCastingLeft", true)) {
+                        /*log::info("{}: Successfully set {} to true", 
+                            (beginHand == MSCO::Magic::Hand::Right) ? "MSCO_start_right"sv : "MSCO_start_left"sv,
+                            (beginHand == MSCO::Magic::Hand::Right) ? "IsCastingRight" : "IsCastingLeft");*/
+                    } else {
+                        log::warn("{}: Failed to set {} to true",
+                                  (beginHand == MSCO::Magic::Hand::Right) ? "MSCO_start_right"sv : "MSCO_start_left"sv,
+                                  (beginHand == MSCO::Magic::Hand::Right) ? "IsCastingRight" : "IsCastingLeft");
+                    }
                     actor->NotifyAnimationGraph((beginHand == MSCO::Magic::Hand::Right) ? "MSCO_start_right"sv : "MSCO_start_left"sv); 
                 }
                 return false;
@@ -332,7 +393,7 @@ namespace MSCO {
         if (auto* form = MSCO::Magic::GetEquippedSpellHand(actor, hand)) {
             if (auto* spell = form->As<RE::SpellItem>()) {
                 return spell;  // SpellItem is a MagicItem
-            }
+            }   
         }
 
         //then check for staff:
