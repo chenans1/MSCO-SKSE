@@ -151,7 +151,10 @@ namespace MSCO {
     bool AnimEventHook::HandleEvent(RE::BSAnimationGraphEvent* a_event) {
         if (!a_event || !a_event->holder || !a_event->tag.data()) return false;
         auto* holder = const_cast<RE::TESObjectREFR*>(a_event->holder);
+        if (!holder) return false;
         auto* actor = holder ? holder->As<RE::Actor>() : nullptr;
+        /*const RE::Actor* actor = nullptr;
+        actor = a_event.holder->As<RE::Actor>();*/
         if (!actor) return false;
         
         //log::info("HandleEvent Called");
@@ -161,40 +164,57 @@ namespace MSCO {
         //if We see the "CastingStateExit" Event we interrupt/clear both hands -> reset nodes
         if (tag == "CastingStateExit"sv) {
             RE::MagicItem* leftSpell = GetEquippedMagicItemForHand(actor, MSCO::Magic::Hand::Left);
-            //don't interrupt since this is the exit on dual casting state, and don't process anything
-            if (leftSpell && leftSpell->IsTwoHanded()) {
-                //log::info("CastingStateExit: Ritual Spell, ignore");
-                return false;
-            }
+            RE::MagicItem* rightSpell = GetEquippedMagicItemForHand(actor, MSCO::Magic::Hand::Right);
             auto& rd = actor->GetActorRuntimeData();
-            const int leftSlot = RE::Actor::SlotTypes::kLeftHand;
-            const int rightSlot = RE::Actor::SlotTypes::kRightHand;
-            auto* actorCasterLeft = rd.magicCasters[leftSlot];
-            auto* actorCasterRight = rd.magicCasters[rightSlot];
-            
-            InterruptHand(actor, MSCO::Magic::Hand::Right);
-            InterruptHand(actor, MSCO::Magic::Hand::Left);
-            actorCasterLeft->ClearMagicNode();
-            actorCasterRight->ClearMagicNode();
+            //don't interrupt since this is the exit on dual casting state, and don't process anything
+            //if (leftSpell && leftSpell->IsTwoHanded()) {
+            //    //log::info("CastingStateExit: Ritual Spell, ignore");
+            //    return false;
+            //}
 
-            //reset all casting graph variables here
-            if (actor->SetGraphVariableBool("IsCastingDual", false)) {
-                //log::info("CastingStateExit: Successfully set IsCastingDual to false");
-            } else {
-                log::warn("CastingStateExit: Failed to set IsCastingDual to false");
+            if (leftSpell) {
+                log::info("CastingStateExit: left spell exists");
+
+                if (leftSpell->IsTwoHanded()) {
+                    // log::info("CastingStateExit: Ritual Spell, ignore");
+                    return false;
+                }
+                const int leftSlot = RE::Actor::SlotTypes::kLeftHand;
+                auto* actorCasterLeft = rd.magicCasters[leftSlot];
+                InterruptHand(actor, MSCO::Magic::Hand::Left);
+                actorCasterLeft->ClearMagicNode();
+
+                if (actor->SetGraphVariableBool("IsCastingLeft", false)) {
+                    // log::info("CastingStateExit: Successfully set IsCastingLeft to false");
+                } else {
+                    log::warn("CastingStateExit: Failed to set IsCastingLeft to false");
+                }
             }
-            if (actor->SetGraphVariableBool("IsCastingRight", false)) {
-                //log::info("CastingStateExit: Successfully set IsCastingRight to false");
-            } else {
-                log::warn("CastingStateExit: Failed to set IsCastingRight to false");
+
+            if (rightSpell) {
+                log::info("CastingStateExit: right spell exists");
+                const int rightSlot = RE::Actor::SlotTypes::kRightHand;
+                auto* actorCasterRight = rd.magicCasters[rightSlot];
+                InterruptHand(actor, MSCO::Magic::Hand::Right);
+                actorCasterRight->ClearMagicNode();
+
+                if (actor->SetGraphVariableBool("IsCastingRight", false)) {
+                    // log::info("CastingStateExit: Successfully set IsCastingRight to false");
+                } else {
+                    log::warn("CastingStateExit: Failed to set IsCastingRight to false");
+                }
+
+                if (actor->SetGraphVariableBool("IsCastingDual", false)) {
+                    // log::info("CastingStateExit: Successfully set IsCastingDual to false");
+                } else {
+                    log::warn("CastingStateExit: Failed to set IsCastingDual to false");
+                }
+                if (actor->SetGraphVariableBool("IsCastingRight", false)) {
+                    // log::info("CastingStateExit: Successfully set IsCastingRight to false");
+                } else {
+                    log::warn("CastingStateExit: Failed to set IsCastingRight to false");
+                }
             }
-            if (actor->SetGraphVariableBool("IsCastingLeft", false)) {
-                //log::info("CastingStateExit: Successfully set IsCastingLeft to false");
-            } else {
-                log::warn("CastingStateExit: Failed to set IsCastingLeft to false");
-            }
-            //replaceNode(actor, RE::MagicSystem::CastingSource::kLeftHand, RE::MagicSystem::CastingSource::kLeftHand);
-            //replaceNode(actor, RE::MagicSystem::CastingSource::kRightHand, RE::MagicSystem::CastingSource::kRightHand); //need to force reset the node because the game doesnt
             return false;
         }
 
@@ -290,7 +310,7 @@ namespace MSCO {
 
             //need to grab the other hand, check if it's fnf
             RE::MagicItem* otherSpell = GetEquippedMagicItemForHand(actor, (beginHand == MSCO::Magic::Hand::Right) ? MSCO::Magic::Hand::Left : MSCO::Magic::Hand::Right);
-            bool otherisFNF = otherSpell->GetCastingType() == RE::MagicSystem::CastingType::kFireAndForget;
+            const bool otherisFNF = otherSpell && otherSpell->GetCastingType() == RE::MagicSystem::CastingType::kFireAndForget;
             //gonna check if we want to cast the other hand if that's the case we send the MSCO_start_lr event instead
             if (!otherisFNF) {
                 log::info("other spell is not fnf, sending default MSCO animevent");
@@ -298,7 +318,7 @@ namespace MSCO {
                 return false;
             } else {
                 //think I check for the bwantcast boolean var here? not sure if that guarantees the otherhand spell firing. maybe I should check for the caster state?
-                auto* otherCaster = actor->GetMagicCaster((beginHand == MSCO::Magic::Hand::Left)
+                auto* otherCaster = actor->GetMagicCaster((beginHand == MSCO::Magic::Hand::Right)
                                                               ? RE::MagicSystem::CastingSource::kLeftHand
                                                               : RE::MagicSystem::CastingSource::kRightHand);
                 //i think this works not sure
@@ -384,6 +404,7 @@ namespace MSCO {
         }
         return false;
     }
+
     //gets the equipped magic item for hand. should handle staves (no idea for scrolls?)
     RE::MagicItem* AnimEventHook::GetEquippedMagicItemForHand(RE::Actor* actor, MSCO::Magic::Hand hand) { 
         if (!actor) {
