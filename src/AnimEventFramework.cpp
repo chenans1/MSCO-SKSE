@@ -165,56 +165,58 @@ namespace MSCO {
         if (tag == "CastingStateExit"sv) {
             RE::MagicItem* leftSpell = GetEquippedMagicItemForHand(actor, MSCO::Magic::Hand::Left);
             RE::MagicItem* rightSpell = GetEquippedMagicItemForHand(actor, MSCO::Magic::Hand::Right);
-            auto& rd = actor->GetActorRuntimeData();
-            //don't interrupt since this is the exit on dual casting state, and don't process anything
-            //if (leftSpell && leftSpell->IsTwoHanded()) {
-            //    //log::info("CastingStateExit: Ritual Spell, ignore");
-            //    return false;
-            //}
+            //auto& rd = actor->GetActorRuntimeData();
+
+            if (rightSpell) {
+                //log::info("CastingStateExit: right spell exists");
+                /*const int rightSlot = RE::Actor::SlotTypes::kRightHand;
+                auto* actorCasterRight = rd.magicCasters[rightSlot];
+                if (actorCasterRight) {
+                    actorCasterRight->ClearMagicNode();
+                }*/
+                const auto source_r = RE::MagicSystem::CastingSource::kLeftHand;
+                if (auto* caster = actor->GetMagicCaster(source_r)) {
+                    caster->ClearMagicNode();
+                }
+                InterruptHand(actor, MSCO::Magic::Hand::Right);
+            }
 
             if (leftSpell) {
-                log::info("CastingStateExit: left spell exists");
-
+                //log::info("CastingStateExit: left spell exists");
                 if (leftSpell->IsTwoHanded()) {
                     // log::info("CastingStateExit: Ritual Spell, ignore");
                     return false;
                 }
-                const int leftSlot = RE::Actor::SlotTypes::kLeftHand;
+                /*const int leftSlot = RE::Actor::SlotTypes::kLeftHand;
                 auto* actorCasterLeft = rd.magicCasters[leftSlot];
+                if (actorCasterLeft) {
+                    actorCasterLeft->ClearMagicNode();
+                }*/
+                const auto source_l = RE::MagicSystem::CastingSource::kLeftHand;
+                if (auto* caster = actor->GetMagicCaster(source_l)) {
+                    caster->ClearMagicNode();
+                }
                 InterruptHand(actor, MSCO::Magic::Hand::Left);
-                actorCasterLeft->ClearMagicNode();
-
-                if (actor->SetGraphVariableBool("IsCastingLeft", false)) {
-                    // log::info("CastingStateExit: Successfully set IsCastingLeft to false");
-                } else {
-                    log::warn("CastingStateExit: Failed to set IsCastingLeft to false");
-                }
             }
 
-            if (rightSpell) {
-                log::info("CastingStateExit: right spell exists");
-                const int rightSlot = RE::Actor::SlotTypes::kRightHand;
-                auto* actorCasterRight = rd.magicCasters[rightSlot];
-                InterruptHand(actor, MSCO::Magic::Hand::Right);
-                actorCasterRight->ClearMagicNode();
-
-                if (actor->SetGraphVariableBool("IsCastingRight", false)) {
-                    // log::info("CastingStateExit: Successfully set IsCastingRight to false");
-                } else {
-                    log::warn("CastingStateExit: Failed to set IsCastingRight to false");
-                }
-
-                if (actor->SetGraphVariableBool("IsCastingDual", false)) {
-                    // log::info("CastingStateExit: Successfully set IsCastingDual to false");
-                } else {
-                    log::warn("CastingStateExit: Failed to set IsCastingDual to false");
-                }
-                if (actor->SetGraphVariableBool("IsCastingRight", false)) {
-                    // log::info("CastingStateExit: Successfully set IsCastingRight to false");
-                } else {
-                    log::warn("CastingStateExit: Failed to set IsCastingRight to false");
-                }
+            
+            if (actor->SetGraphVariableBool("IsCastingRight", false)) {
+                // log::info("CastingStateExit: Successfully set IsCastingRight to false");
+            } else {
+                log::warn("CastingStateExit: Failed to set IsCastingRight to false");
             }
+
+            if (actor->SetGraphVariableBool("IsCastingDual", false)) {
+                // log::info("CastingStateExit: Successfully set IsCastingDual to false");
+            } else {
+                log::warn("CastingStateExit: Failed to set IsCastingDual to false");
+            }
+            if (actor->SetGraphVariableBool("IsCastingLeft", false)) {
+                // log::info("CastingStateExit: Successfully set IsCastingRight to false");
+            } else {
+                log::warn("CastingStateExit: Failed to set IsCastingRight to false");
+            }
+
             return false;
         }
 
