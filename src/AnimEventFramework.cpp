@@ -1,6 +1,4 @@
-#include "PCH.h"
 #include "AnimEventFramework.h"
-#include "PayloadHandler.h"
 
 using namespace SKSE;
 using namespace SKSE::log;
@@ -168,16 +166,11 @@ namespace MSCO {
             //auto& rd = actor->GetActorRuntimeData();
 
             if (rightSpell) {
-                //log::info("CastingStateExit: right spell exists");
-                /*const int rightSlot = RE::Actor::SlotTypes::kRightHand;
-                auto* actorCasterRight = rd.magicCasters[rightSlot];
-                if (actorCasterRight) {
-                    actorCasterRight->ClearMagicNode();
-                }*/
                 const auto source_r = RE::MagicSystem::CastingSource::kLeftHand;
                 if (auto* caster = actor->GetMagicCaster(source_r)) {
                     caster->ClearMagicNode();
                 }
+                actor->NotifyAnimationGraph("MRh_Equipped_Event"sv);
                 InterruptHand(actor, MSCO::Magic::Hand::Right);
             }
 
@@ -187,15 +180,11 @@ namespace MSCO {
                     // log::info("CastingStateExit: Ritual Spell, ignore");
                     return false;
                 }
-                /*const int leftSlot = RE::Actor::SlotTypes::kLeftHand;
-                auto* actorCasterLeft = rd.magicCasters[leftSlot];
-                if (actorCasterLeft) {
-                    actorCasterLeft->ClearMagicNode();
-                }*/
                 const auto source_l = RE::MagicSystem::CastingSource::kLeftHand;
                 if (auto* caster = actor->GetMagicCaster(source_l)) {
                     caster->ClearMagicNode();
                 }
+                actor->NotifyAnimationGraph("MLh_Equipped_Event"sv);
                 InterruptHand(actor, MSCO::Magic::Hand::Left);
             }
 
@@ -220,50 +209,91 @@ namespace MSCO {
             return false;
         }
 
-        //on MCO_WinOpen Allow for the casting?
-        if (tag == "MCO_WinOpen"sv) {
-            actor->NotifyAnimationGraph("CastOkStart"sv);
+        //maybe if we send the equipped event the npc ai processes stuff  better?
+        if (tag == "MSCO_WinOpen"sv) {
+            if (GetGraphBool(actor, "bMSCO_RightCasting")) actor->NotifyAnimationGraph("MRh_WinStart"sv);
+            if (GetGraphBool(actor, "bMSCO_LeftCasting") || GetGraphBool(actor, "bMSCODualCasting")) {
+                actor->NotifyAnimationGraph("MLh_WinStart"sv);
+            }
+            return false;
+        }   
+        if (tag == "MSCO_WinClose"sv) {
+            if (GetGraphBool(actor, "bMSCO_RightCasting")) actor->NotifyAnimationGraph("MRh_WinEnd"sv);
+            if (GetGraphBool(actor, "bMSCO_LeftCasting") || GetGraphBool(actor, "bMSCODualCasting")) {
+                actor->NotifyAnimationGraph("MLh_WinEnd"sv);
+            }
+            if (GetGraphBool(actor, "bMSCO_LRCasting")) {
+                actor->NotifyAnimationGraph("MRh_WinEnd"sv);
+                actor->NotifyAnimationGraph("MLh_WinEnd"sv);
+            }
+            return false;
+        }   
+        if (tag == "MSCO_LR_ready"sv) {
+            actor->NotifyAnimationGraph("MRh_WinStart"sv);
+            actor->NotifyAnimationGraph("MLh_WinStart"sv);
             return false;
         }
-
-        if (tag == "MCO_PowerWinOpen"sv) {
+        //on MCO_WinOpen Allow for the casting?
+        if (tag == "MCO_WinOpen"sv || tag == "MCO_PowerWinOpen"sv) {
             actor->NotifyAnimationGraph("CastOkStart"sv);
             return false;
         }
 
         //spellfire event handlers->just handles source replacement
         if (tag == "MRh_SpellFire_Event"sv) {
+            //if (auto* caster = actor->GetMagicCaster(RE::MagicSystem::CastingSource::kRightHand)) {
+            //    log::info("caster casting timer: {}", caster->castingTimer);
+            //}
             if (!GetGraphBool(actor, "bIsMSCO")) return false;
+            actor->SetGraphVariableInt("MSCO_right_lock"sv, 0);
             replaceNode(actor, RE::MagicSystem::CastingSource::kRightHand, RE::MagicSystem::CastingSource::kRightHand); //need to force reset the node because the game doesnt
             RE::MagicItem* CurrentSpell = GetEquippedMagicItemForHand(actor, MSCO::Magic::Hand::Right);
             if (!CurrentSpell) {
                 log::warn("No CurrentSpell");
                 return false;
             }
+            log::info("MRh_SpellFire_Event state = {}", logState2(actor, RE::MagicSystem::CastingSource::kRightHand));
             const auto parsed = MSCO::ParseSpellFire(payload);
             auto output_source = parsed.src.value_or(RE::MagicSystem::CastingSource::kRightHand);
-            if (RE::MagicSystem::CastingSource::kRightHand != output_source) { //only replace if it's different
-                replaceNode(actor, RE::MagicSystem::CastingSource::kRightHand, output_source);
+            if (MSCO::Magic::ConsumeResource(RE::MagicSystem::CastingSource::kRightHand, actor, CurrentSpell, GetGraphBool(actor, "bMSCODualCasting"), 1.0f)) {
+                if (RE::MagicSystem::CastingSource::kRightHand != output_source) {  // only replace if it's different
+                    replaceNode(actor, RE::MagicSystem::CastingSource::kRightHand, output_source);
+                    /*MSCO::Magic::Spellfire(RE::MagicSystem::CastingSource::kRightHand, actor, CurrentSpell,
+                                           GetGraphBool(actor, "bMSCODualCasting"), 1.0f, output_source);*/
+                }
             }
             return false;
         }
 
         if (tag == "MLh_SpellFire_Event"sv) {
             if (!GetGraphBool(actor, "bIsMSCO")) return false;
+            actor->SetGraphVariableInt("MSCO_left_lock"sv, 0);
             replaceNode(actor, RE::MagicSystem::CastingSource::kLeftHand, RE::MagicSystem::CastingSource::kLeftHand);
             RE::MagicItem* CurrentSpell = GetEquippedMagicItemForHand(actor, MSCO::Magic::Hand::Left);
             if (!CurrentSpell) {
                 log::warn("No CurrentSpell");
                 return false;
             }
+            log::info("MLh_SpellFire_Event state = {}", logState2(actor, RE::MagicSystem::CastingSource::kLeftHand));
             const auto parsed = ParseSpellFire(payload);
             auto output_source = parsed.src.value_or(RE::MagicSystem::CastingSource::kLeftHand);
-            if (RE::MagicSystem::CastingSource::kLeftHand != output_source) {  // only replace if it's different
-                replaceNode(actor, RE::MagicSystem::CastingSource::kLeftHand, output_source);
+            if (MSCO::Magic::ConsumeResource(RE::MagicSystem::CastingSource::kLeftHand, actor, CurrentSpell,
+                                             GetGraphBool(actor, "bMSCODualCasting"), 1.0f)) {
+                if (RE::MagicSystem::CastingSource::kLeftHand != output_source) {  // only replace if it's different
+                    replaceNode(actor, RE::MagicSystem::CastingSource::kLeftHand, output_source);
+                    /*MSCO::Magic::Spellfire(RE::MagicSystem::CastingSource::kRightHand, actor, CurrentSpell,
+                                           GetGraphBool(actor, "bMSCODualCasting"), 1.0f, output_source);*/
+                }
             }
             return false;
         }
-
+        /*if (tag == "MSCO_inputbuffer"sv) {
+            if (auto* caster = actor->GetMagicCaster(RE::MagicSystem::CastingSource::kRightHand)) {
+                log::info("casting timer at msco_inputbuffer: {}", caster->castingTimer);
+            }
+            return false;
+        }*/
+        
         //BeginCastLeft/Right handler. Handles button suppresion and MSCO inputs
         MSCO::Magic::Hand beginHand{};
         if (IsBeginCastEvent(tag, beginHand)) {
@@ -273,7 +303,11 @@ namespace MSCO {
 
             if (ok && lock != 0) return true;  // swallow the BeginCastLeft/Right Event
             if (actor->IsSneaking()) return false; //check if we are sneaking nor not - don't do anything if we are
-
+            //if npc not in combat also default to vanilla behaviors
+            if (!actor->IsInCombat() && !actor->IsPlayerRef()) {
+                log::info("non-combat spell casting - normal behaviors");
+                return false;
+            }
             RE::MagicItem* CurrentSpell = GetEquippedMagicItemForHand(actor, beginHand);
             if (!CurrentSpell) {log::warn("No CurrentSpell"); return false;}
             //GOING TO IGNORE RITUAL SPELLS FOR NOW
@@ -288,12 +322,16 @@ namespace MSCO {
                 CurrentSpell->GetCastingType() != RE::MagicSystem::CastingType::kScroll) {
                 return false;
             }
-                
-
+            //if (actor->SetGraphVariableInt("iMSCO_ON"sv, 1)) log::info("iMSCO_ON == 1");
             auto& rd = actor->GetActorRuntimeData();
             const int slot = (beginHand == MSCO::Magic::Hand::Left) ? RE::Actor::SlotTypes::kLeftHand : RE::Actor::SlotTypes::kRightHand;
             auto* actorCaster = rd.magicCasters[slot];
-            
+            //additional state check to block wonky behaviors maybe?
+            if (actorCaster->state.get() >= RE::MagicCaster::State::kUnk02) {
+
+                return true;
+            }
+            if (actor->SetGraphVariableInt("iMSCO_ON"sv, 1)) log::info("iMSCO_ON == 1");
             //test if dual cast flag is set?
             //const auto source = MSCO::Magic::HandToSource(beginHand);
             //auto* caster = actor->GetMagicCaster(source);
@@ -301,12 +339,23 @@ namespace MSCO {
             bool wantDualCasting = actorCaster->GetIsDualCasting();
             
             if (wantDualCasting) { 
-                if (actor->SetGraphVariableBool("IsCastingDual", true)) {
+                if (actor->SetGraphVariableBool("IsCastingDual"sv, true)) {
                     //log::info("MSCO_start_dual: Successfully set IsCastingDual to true");
                 } else {
                     log::warn("MSCO_start_dual: Failed to set IsCastingDual to true");
                 }
                 actor->NotifyAnimationGraph("MSCO_start_dual"sv);
+                //actorCaster->RequestCastImpl();
+                //actorCaster->state.set(RE::MagicCaster::State::kUnk04);
+                actorCaster->castingTimer = 0.00001f;
+                log::info("DualCast BeginCast state = {}", logState2(actor, (beginHand == MSCO::Magic::Hand::Right)
+                                                                       ? RE::MagicSystem::CastingSource::kRightHand
+                                                                       : RE::MagicSystem::CastingSource::kLeftHand));
+                /*actor->SetGraphVariableInt("MSCO_right_lock"sv, 1);
+                actor->SetGraphVariableInt("MSCO_left_lock"sv, 1);*/
+                //log::info("casting timer at dual casting: {}", actorCaster->castingTimer);
+                actor->NotifyAnimationGraph("MLh_SpellRelease_Event"sv);
+                actorCaster->state.set(RE::MagicCaster::State::kUnk04);
                 return false;
             }
 
@@ -315,8 +364,25 @@ namespace MSCO {
             const bool otherisFNF = otherSpell && otherSpell->GetCastingType() == RE::MagicSystem::CastingType::kFireAndForget;
             //gonna check if we want to cast the other hand if that's the case we send the MSCO_start_lr event instead
             if (!otherisFNF) {
-                log::info("other spell is not fnf, sending default MSCO animevent");
+                if (actor->SetGraphVariableBool(
+                        (beginHand == MSCO::Magic::Hand::Right) ? "IsCastingRight"sv : "IsCastingLeft"sv, true)) {
+                } else {
+                    log::warn("{}: Failed to set {} to true",
+                              (beginHand == MSCO::Magic::Hand::Right) ? "MSCO_start_right"sv : "MSCO_start_left"sv,
+                              (beginHand == MSCO::Magic::Hand::Right) ? "IsCastingRight" : "IsCastingLeft");
+                }
+                //log::info("other spell is not fnf, sending default MSCO animevent");
                 actor->NotifyAnimationGraph((beginHand == MSCO::Magic::Hand::Right) ? "MSCO_start_right"sv : "MSCO_start_left"sv);
+                //actor->SetGraphVariableInt((beginHand == MSCO::Magic::Hand::Right) ? "MSCO_right_lock"sv : "MSCO_left_lock"sv, 1);
+                actorCaster->castingTimer = 0.00001f;
+                log::info("BeginCast state = {}", logState2(actor, (beginHand == MSCO::Magic::Hand::Right)
+                                                                       ? RE::MagicSystem::CastingSource::kRightHand
+                                                                       : RE::MagicSystem::CastingSource::kLeftHand));
+                //log::info("casting timer at begincast: {}", actorCaster->castingTimer);
+                //actorCaster->state.set(RE::MagicCaster::State::kUnk02);
+                actor->NotifyAnimationGraph((beginHand == MSCO::Magic::Hand::Right) ? "MRh_SpellRelease_Event"sv
+                                                                                    : "MLh_SpellRelease_Event"sv);
+                actorCaster->state.set(RE::MagicCaster::State::kUnk04);
                 return false;
             } else {
                 //think I check for the bwantcast boolean var here? not sure if that guarantees the otherhand spell firing. maybe I should check for the caster state?
@@ -326,25 +392,24 @@ namespace MSCO {
                 //i think this works not sure
                 //need to check that current spell is two handed, also needs both MRH and mlh spell fire. It's possible it also needs order, but I'm not sure
                 //if (otherCaster->state.get() >= RE::MagicCaster::State::kUnk04 || CurrentSpell->IsTwoHanded()) {
-                if (otherCaster->state.get() >= RE::MagicCaster::State::kUnk04) {
-
-                    /*log::info("otherCaster State = {}, sending MSCO_start_lr",
-                        logState2(actor, (beginHand == MSCO::Magic::Hand::Left) 
-                            ? RE::MagicSystem::CastingSource::kLeftHand : 
-                            RE::MagicSystem::CastingSource::kRightHand));*/
-                    if (actor->SetGraphVariableBool("IsCastingRight", true)) {
+                if (otherCaster->state.get() >= RE::MagicCaster::State::kReady) {
+                    if (actor->SetGraphVariableBool("IsCastingRight"sv, true)) {
                         //log::info("MSCO_start_lr: Successfully set IsCastingRight to true");
                     } else {
                         log::warn("MSCO_start_lr: Failed to set IsCastingRight to true");
                     }
-                    if (actor->SetGraphVariableBool("IsCastingLeft", true)) {
+                    if (actor->SetGraphVariableBool("IsCastingLeft"sv, true)) {
                         //log::info("MSCO_start_lr: Successfully set IsCastingLeft to true");
                     } else {
                         log::warn("MSCO_start_lr: Failed to set IsCastingLeft to true");
                     }
                     actor->NotifyAnimationGraph("MSCO_start_lr"sv);
+                    actor->NotifyAnimationGraph("MRh_SpellRelease_Event"sv);
+                    actor->NotifyAnimationGraph("MLh_SpellRelease_Event"sv);
+                    /*actor->SetGraphVariableInt("MSCO_right_lock"sv, 1);
+                    actor->SetGraphVariableInt("MSCO_left_lock"sv, 1);*/
                 } else {
-                    if (actor->SetGraphVariableBool((beginHand == MSCO::Magic::Hand::Right) ? "IsCastingRight" : "IsCastingLeft", true)) {
+                    if (actor->SetGraphVariableBool((beginHand == MSCO::Magic::Hand::Right) ? "IsCastingRight"sv : "IsCastingLeft"sv, true)) {
                         /*log::info("{}: Successfully set {} to true", 
                             (beginHand == MSCO::Magic::Hand::Right) ? "MSCO_start_right"sv : "MSCO_start_left"sv,
                             (beginHand == MSCO::Magic::Hand::Right) ? "IsCastingRight" : "IsCastingLeft");*/
@@ -354,30 +419,40 @@ namespace MSCO {
                                   (beginHand == MSCO::Magic::Hand::Right) ? "IsCastingRight" : "IsCastingLeft");
                     }
                     actor->NotifyAnimationGraph((beginHand == MSCO::Magic::Hand::Right) ? "MSCO_start_right"sv : "MSCO_start_left"sv); 
+                    //actor->SetGraphVariableInt((beginHand == MSCO::Magic::Hand::Right) ? "MSCO_right_lock"sv : "MSCO_left_lock"sv, 1);
+                    actor->NotifyAnimationGraph((beginHand == MSCO::Magic::Hand::Right) ? "MRh_SpellRelease_Event"sv
+                                                                                        : "MLh_SpellRelease_Event"sv);
                 }
+                //set state
+                //actorCaster->RequestCastImpl();
+                actorCaster->castingTimer = 0.00001f;
+                log::info("BeginCast state = {}", logState2(actor, (beginHand == MSCO::Magic::Hand::Right)
+                                                                       ? RE::MagicSystem::CastingSource::kRightHand
+                                                                       : RE::MagicSystem::CastingSource::kLeftHand));
+                //log::info("casting timer at begincast: {}", actorCaster->castingTimer);
+                actorCaster->state.set(RE::MagicCaster::State::kUnk04);
                 return false;
             }
         }
 
         //interrupt conc spell in other hand if applicable
         MSCO::Magic::Hand firingHand{};
-        if (!IsMSCOEvent(tag, firingHand)) return false;
+        if (IsMSCOEvent(tag, firingHand)) {
+            // log::info("msco casting event detected");
+            const auto otherHand =
+                (firingHand == MSCO::Magic::Hand::Right) ? MSCO::Magic::Hand::Left : MSCO::Magic::Hand::Right;
 
-        //log::info("msco casting event detected");
-        const auto otherHand =
-            (firingHand == MSCO::Magic::Hand::Right) 
-            ? MSCO::Magic::Hand::Left : MSCO::Magic::Hand::Right;
+            RE::MagicItem* otherItem = nullptr;
 
-        RE::MagicItem* otherItem = nullptr;
-
-        otherItem = GetCurrentlyCastingMagicItem(actor, otherHand);
-        if (!otherItem) {
-            //log::info("no other item for GetCurrentlyCastingMagicItem()");
-            return false;
-        }
-        //log::info("detected magic item");
-        if (otherItem->GetCastingType() == RE::MagicSystem::CastingType::kConcentration) {
-            InterruptHand(actor, otherHand);
+            otherItem = GetCurrentlyCastingMagicItem(actor, otherHand);
+            if (!otherItem) {
+                // log::info("no other item for GetCurrentlyCastingMagicItem()");
+                return false;
+            }
+            // log::info("detected magic item");
+            if (otherItem->GetCastingType() == RE::MagicSystem::CastingType::kConcentration) {
+                InterruptHand(actor, otherHand);
+            }
         }
         return false;
     }

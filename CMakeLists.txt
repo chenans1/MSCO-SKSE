@@ -18,7 +18,9 @@ set(SOURCES
     src/magichandler.cpp
     src/attackhandler.cpp
     src/AnimEventFramework.cpp
-    src/payloadhandler.cpp)
+    src/payloadhandler.cpp
+    src/soundhandler.cpp
+    src/SpellCastEventHandler.cpp)
 
 # add_subdirectory("C:/SKSEdev/repos/template_test/extern/CommonLibVR-NG")
 add_subdirectory(extern/CommonLibVR-ng)
@@ -30,7 +32,9 @@ target_precompile_headers(${PROJECT_NAME} PRIVATE
     src/magichandler.h
     src/attackhandler.h
     src/AnimEventFramework.h
-    src/payloadhandler.h) 
+    src/payloadhandler.h
+    src/soundhandler.h
+    src/SpellCastEventHandler.h) 
     
 
 # When your SKSE .dll is compiled, this will automatically copy the .dll into your mods folder.
