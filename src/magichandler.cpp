@@ -299,19 +299,12 @@ namespace MSCO::Magic {
     static inline RequestCast RequestCastImpl = nullptr;
 
     static void RequestCast_Hook(RE::MagicCaster* caster) {
-        //bool deny = false;
         if (caster->state.get() >= RE::MagicCaster::State::kUnk02) {
-            //do deny function call
             log::info("denied requestcastimpl() function call");
             return;
         }
-        //if (deny) {
-        //    log::info("denied requestcastimpl() function call");
-        //    return;
-        //}
-
         if (RequestCastImpl) {
-            log::info("requestcastimpl() accepted");
+            //log::info("requestcastimpl() accepted");
             RequestCastImpl(caster);
         }
         
