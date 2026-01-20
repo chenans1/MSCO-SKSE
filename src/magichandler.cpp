@@ -300,14 +300,11 @@ namespace MSCO::Magic {
 
     static void RequestCast_Hook(RE::MagicCaster* caster) {
         //bool deny = false;
-        if (auto* actor = caster->GetCasterAsActor()) {
-            if (caster->state.get() >= RE::MagicCaster::State::kUnk02) {
+        if (caster->state.get() >= RE::MagicCaster::State::kUnk02) {
             //do deny function call
-                log::info("denied requestcastimpl() function call");
-                return;
-            }
+            log::info("denied requestcastimpl() function call");
+            return;
         }
-
         //if (deny) {
         //    log::info("denied requestcastimpl() function call");
         //    return;
