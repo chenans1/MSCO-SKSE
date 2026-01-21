@@ -143,6 +143,158 @@ namespace MSCO {
         }
     }
 
+    struct MSCOChargeSpeedCFG {
+        float shortest;  // MSCO_shortest
+        float longest;   // MSCO_longest
+        float baseTime;  // MSCO_basetime
+        float minSpeed;  // MSCO_minspeed
+        float maxSpeed;  // MSCO_maxspeed
+        float expFactor; // MSCO_ExpFactor
+    };
+
+    //helper to get global vars (using lookup here but it's probably slower than direct formID query)
+    static float GetGlobalValue(const char* editorID, float fallback) {
+        auto* gv = RE::TESForm::LookupByEditorID<RE::TESGlobal>(editorID);
+        if (!gv) {
+            log::warn("MSCO: Global {} not found, using fallback {}", editorID, fallback);
+            return fallback;
+        }
+        return gv->value;
+    }
+
+    MSCOChargeSpeedCFG GetMSCOChargeSpeedConfig() { 
+        MSCOChargeSpeedCFG cfg{};
+        cfg.shortest = GetGlobalValue("MSCO_shortest", 0.0f);
+        cfg.longest = GetGlobalValue("MSCO_longest", 1.5f);
+        cfg.baseTime = GetGlobalValue("MSCO_basetime", 0.5f);
+        cfg.minSpeed = GetGlobalValue("MSCO_minspeed", 0.5f);
+        cfg.maxSpeed = GetGlobalValue("MSCO_maxspeed", 1.5f);
+        cfg.expFactor = GetGlobalValue("MSCO_ExpFactor", 1.0f);
+
+        //sanitize (albeit we already do this later)
+        if (cfg.longest < cfg.shortest) {
+            std::swap(cfg.longest, cfg.shortest);
+        }
+
+        cfg.baseTime = std::clamp(cfg.baseTime, cfg.shortest, cfg.longest);
+        cfg.minSpeed = std::max(0.01f, cfg.minSpeed);
+        cfg.maxSpeed = std::max(cfg.minSpeed, cfg.maxSpeed);
+
+        return cfg;
+    }
+    
+    bool isChargeMechanicOn() { 
+        const float chargeMech = GetGlobalValue("MSCO_ChargeMechanicOn", 0.0f);
+        if (chargeMech > 0.01) {
+            return true;
+        }
+        return false;
+    }
+    bool isExpMode() {
+        const float expMode = GetGlobalValue("MSCO_ExpMode", 0.0f);
+        if (expMode > 0.01) {
+            return true;
+        }
+        return false;
+    }
+
+    //clamp function.
+    static float Clamp(float x, float a, float b) { return std::max(a, std::min(x, b)); }
+
+    //maps charge time to [maxspeed ... 1.0x ] if chargetime < base, else maps it to [1.0x ... minspeed]
+    float getSpeed(float chargeTime, float shortest, float longest, float base, float minSpeed, float maxSpeed) {
+        //sanitize values first to avoid any divide by zeroes or negatives
+        shortest = std::min(shortest, longest);
+        base = Clamp(base, shortest, longest);
+        minSpeed = std::max(0.0f, minSpeed);
+        maxSpeed = std::max(minSpeed, maxSpeed);
+
+        const float t = Clamp(chargeTime, shortest, longest);
+        // Exactly base => exactly 1.0
+        if (std::abs(t - base) < 1e-6f) {
+            return 1.0f;
+        }
+
+        //Faster side: [shortest .. base] maps to [maxSpeed .. 1.0]
+        if (t < base) {
+            const float denom = (base - shortest);
+            if (denom <= 1e-6f) {
+                return 1.0f;  // base==shortest, no "fast" range
+            }
+            const float u = (base - t) / denom;  // 0..1
+            return 1.0f + u * (maxSpeed - 1.0f);
+        }
+
+        //Slower side: [base .. longest] maps to [1.0 .. minSpeed]
+        const float denom = (longest - base);
+        if (denom <= 1e-6f) {
+            return 1.0f;  // base==longest, no "slow" range
+        }
+
+        const float v = (t - base) / denom;  // 0..1
+        return 1.0f - v * (1.0f - minSpeed);
+    }
+
+    //alternative exponential mode -> better if you have wide distribution of charge times and want that reflected in the animation speed
+    float getSpeedExp(float chargeTime, float shortest, float longest, float baseTime, float minSpeed, float maxSpeed, float expFactor) {
+        // Prevent division by zero or nonsense configs
+        if (shortest <= 0.0f) {
+            shortest = 0.001f;
+        }
+
+        if (longest < shortest) {
+            std::swap(longest, shortest);
+        }
+
+        if (baseTime <= 0.0f) {
+            baseTime = shortest;
+        }
+
+        if (minSpeed > maxSpeed) {
+            std::swap(minSpeed, maxSpeed);
+        }
+
+        // Clamp exponent so designers can’t nuke the curve
+        expFactor = std::clamp(expFactor, 0.1f, 4.0f);
+
+        // ---- Clamp charge time ----
+        chargeTime = std::clamp(chargeTime, shortest, longest);
+
+        // ---- Anchored reciprocal ----
+        float speed = std::pow(baseTime / chargeTime, expFactor);
+
+        // ---- Clamp final speed ----
+        speed = std::clamp(speed, minSpeed, maxSpeed);
+
+        return speed;
+    }
+
+    float ConvertSpeed(RE::Actor* actor, float chargeTime, const RE::BSFixedString tag, bool expMode) {
+        if (!actor) {
+            log::warn("ConvertSpeed: null actor", tag.data());
+            return 1.0f;
+        }
+
+        //auto chargeTime = spell->GetChargeTime();
+        auto cfg = GetMSCOChargeSpeedConfig();
+        
+        if (expMode) {
+            return getSpeedExp(chargeTime, cfg.shortest, cfg.longest, cfg.baseTime, cfg.minSpeed, cfg.maxSpeed, cfg.expFactor);
+        } else {
+            return getSpeed(chargeTime, cfg.shortest, cfg.longest, cfg.baseTime, cfg.minSpeed, cfg.maxSpeed);
+        }
+        /*const char* actorName = actor->GetName();
+        if (!actorName || actorName[0] == '\0') {
+            actorName = "<unnamed actor>";
+        }
+
+        log::info("[MSCO] {} | actor='{}' | chargeTime={:.3f} | speed={:.3f}", tag.data(), actorName, chargeTime, speed);
+        if (!actor->SetGraphVariableFloat("MSCO_attackspeed", speed)) {
+            log::warn("{}: failed to set MSCO_attackspeed to {}", tag.data(), speed);
+        }
+        return speed */
+    }
+
     void AnimEventHook::Install() {
         log::info("[MSCO] Installing AnimEventFramework hook...");
 
@@ -459,7 +611,23 @@ namespace MSCO {
                     InterruptHand(actor, otherHand);
                 }
             }
+            if (!isChargeMechanicOn()) return false;
+            //set charge time
+            RE::MagicItem* CurrentSpell = GetEquippedMagicItemForHand(actor, firingHand);
+            if (!CurrentSpell) {
+                log::warn("No CurrentSpell detected for {}", tag.data());
+                return false;
+            }
+            float speed = ConvertSpeed(actor, CurrentSpell->GetChargeTime(), tag, isExpMode());
+            const char* actorName = actor->GetName();
+            if (!actorName || actorName[0] == '\0') {
+                actorName = "<unnamed actor>";
+            }
 
+            log::info("[MSCO] {} | actor='{}' | chargeTime={:.3f} | speed={:.3f}", tag.data(), actorName, CurrentSpell->GetChargeTime(), speed); 
+            if (!actor->SetGraphVariableFloat("MSCO_attackspeed", speed)) { 
+                log::warn("{}: failed to setMSCO_attackspeed to {}", tag.data(), speed);
+            }
             return false;
         }
 
@@ -470,6 +638,23 @@ namespace MSCO {
             if (!actor->SetGraphVariableInt("MSCO_left_lock"sv, 1)) {
                 log::warn("{}: failed to set MSCO_right_lock to 1", tag.data());
             }
+            if (!isChargeMechanicOn()) return false;
+            // set charge time
+            RE::MagicItem* CurrentSpell = GetEquippedMagicItemForHand(actor, MSCO::Magic::Hand::Left);
+            if (!CurrentSpell) {
+                log::warn("No CurrentSpell detected for {}", tag.data());
+                return false;
+            }
+            float speed = ConvertSpeed(actor, CurrentSpell->GetChargeTime(), tag, isExpMode());
+            const char* actorName = actor->GetName();
+            if (!actorName || actorName[0] == '\0') {
+                actorName = "<unnamed actor>";
+            }
+
+            log::info("[MSCO] {} | actor='{}' | chargeTime={:.3f} | speed={:.3f}", tag.data(), actorName, CurrentSpell->GetChargeTime(), speed);
+            if (!actor->SetGraphVariableFloat("MSCO_attackspeed", speed)) {
+                log::warn("{}: failed to setMSCO_attackspeed to {}", tag.data(), speed);
+            }
             return false;
         }
         
@@ -479,6 +664,30 @@ namespace MSCO {
             }
             if (!actor->SetGraphVariableInt("MSCO_left_lock"sv, 1)) {
                 log::warn("{}: failed to set MSCO_right_lock to 1", tag.data());
+            }
+            if (!isChargeMechanicOn()) return false;
+            // set charge time
+            RE::MagicItem* leftSpell = GetEquippedMagicItemForHand(actor, MSCO::Magic::Hand::Left);
+            RE::MagicItem* rightSpell = GetEquippedMagicItemForHand(actor, MSCO::Magic::Hand::Right);
+            if (!leftSpell || !rightSpell) {
+                log::warn("No leftSpell or rightSpell detected for {}", tag.data());
+                return false;
+            }
+            //average the charge times and then plug that shit in
+            const float leftChargeTime = leftSpell->GetChargeTime();
+            const float rightChargeTime = rightSpell->GetChargeTime();
+            const float averageChargeTime = (leftChargeTime + rightChargeTime) / 2;
+            const float speed = ConvertSpeed(actor, averageChargeTime, tag, isExpMode());
+            const char* actorName = actor->GetName();
+
+            if (!actorName || actorName[0] == '\0') {
+                actorName = "<unnamed actor>";
+            }
+
+            log::info("[MSCO] {} | actor='{}' | chargeTime={:.3f} | speed={:.3f}", tag.data(), actorName,
+                      averageChargeTime, speed);
+            if (!actor->SetGraphVariableFloat("MSCO_attackspeed", speed)) {
+                log::warn("{}: failed to setMSCO_attackspeed to {}", tag.data(), speed);
             }
             return false;
         }
