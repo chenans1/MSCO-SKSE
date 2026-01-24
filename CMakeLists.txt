@@ -19,7 +19,8 @@ set(SOURCES
     src/attackhandler.cpp
     src/AnimEventFramework.cpp
     src/payloadhandler.cpp
-    src/settings.cpp)
+    src/settings.cpp
+    src/utils.cpp)
 
 # add_subdirectory("C:/SKSEdev/repos/template_test/extern/CommonLibVR-NG")
 add_subdirectory(extern/CommonLibVR-ng)
@@ -32,7 +33,8 @@ target_precompile_headers(${PROJECT_NAME} PRIVATE
     src/attackhandler.h
     src/AnimEventFramework.h
     src/payloadhandler.h
-    src/settings.h) 
+    src/settings.h
+    src/utils.h) 
 
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/extern
