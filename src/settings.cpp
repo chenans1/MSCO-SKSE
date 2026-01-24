@@ -20,8 +20,8 @@ namespace settings {
 
         ImGuiMCP::Checkbox("Enable charge mechanic", &c.chargeMechanicOn);
         ImGuiMCP::Checkbox("Use exponential mode", &c.expMode);
-        ImGuiMCP::Checkbox("Allow NPCs", &c.NPCAllowed);
-        ImGuiMCP::Checkbox("Allow Player", &c.PlayerAllowed);
+        ImGuiMCP::Checkbox("NPCs use MSCO Animations", &c.NPCAllowed);
+        ImGuiMCP::Checkbox("Player uses MSCO Animations", &c.PlayerAllowed);
         ImGuiMCP::Separator();
         ImGuiMCP::TextUnformatted("Charge time range (seconds)");
         ImGuiMCP::DragFloat("Shortest", &c.shortest, 0.01f, 0.0f, 5.0f, "%.3f");

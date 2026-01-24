@@ -119,6 +119,9 @@ namespace MSCO {
     static bool IsConvertChargeTime() {return settings::Get().chargeMechanicOn;}
 
     static bool IsExpMode() {return settings::Get().expMode;}
+    static bool NPCAllowed() {return settings::Get().NPCAllowed;}
+    static bool PlayerAllowed() { return settings::Get().PlayerAllowed;}
+    static float GetNPCFactor() { return settings::Get().NPCFactor; }
 
     //clamp function.
     static float Clamp(float x, float a, float b) { return std::max(a, std::min(x, b)); }
@@ -200,11 +203,17 @@ namespace MSCO {
         //auto chargeTime = spell->GetChargeTime();
         //auto cfg = GetMSCOChargeSpeedConfig();
         auto cfg = getCFG();
+        float speed = 1.0f;
         if (expMode) {
-            return getSpeedExp(chargeTime, cfg.shortest, cfg.longest, cfg.baseTime, cfg.minSpeed, cfg.maxSpeed, cfg.expFactor);
+            speed = getSpeedExp(chargeTime, cfg.shortest, cfg.longest, cfg.baseTime, cfg.minSpeed, cfg.maxSpeed, cfg.expFactor);
         } else {
-            return getSpeed(chargeTime, cfg.shortest, cfg.longest, cfg.baseTime, cfg.minSpeed, cfg.maxSpeed);
+            speed = getSpeed(chargeTime, cfg.shortest, cfg.longest, cfg.baseTime, cfg.minSpeed, cfg.maxSpeed);
         }
+
+        if (!actor->IsPlayerRef()) {
+            speed = std::clamp(speed*GetNPCFactor(), cfg.minSpeed, cfg.maxSpeed);
+        }
+        return speed;
         /*const char* actorName = actor->GetName();
         if (!actorName || actorName[0] == '\0') {
             actorName = "<unnamed actor>";
@@ -234,7 +243,7 @@ namespace MSCO {
         RE::BSTEventSink<RE::BSAnimationGraphEvent>* a_sink,
         RE::BSAnimationGraphEvent* a_event,
         RE::BSTEventSource<RE::BSAnimationGraphEvent>* a_eventSource) {
-        if (HandleEvent(a_event)) return RE::BSEventNotifyControl::kContinue;
+        if (NPCAllowed() && HandleEvent(a_event)) return RE::BSEventNotifyControl::kContinue;
         return _originalNPC(a_sink, a_event, a_eventSource);
     }
 
@@ -242,7 +251,7 @@ namespace MSCO {
         RE::BSTEventSink<RE::BSAnimationGraphEvent>* a_sink, 
         RE::BSAnimationGraphEvent* a_event,
         RE::BSTEventSource<RE::BSAnimationGraphEvent>* a_eventSource) {
-        if (HandleEvent(a_event)) return RE::BSEventNotifyControl::kContinue;
+        if (PlayerAllowed() && HandleEvent(a_event)) return RE::BSEventNotifyControl::kContinue;
         return _originalPC(a_sink, a_event, a_eventSource);
     }    
 
