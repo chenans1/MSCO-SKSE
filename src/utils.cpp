@@ -86,14 +86,21 @@ namespace utils {
         }
     }
 
-    //static const char* SafeNodeName(const RE::NiAVObject* obj) {
-    //    if (!obj) return "<null>";
-    //    // NiAVObject usually has BSFixedString name
-    //    // In CommonLib: obj->name.c_str()
-    //    const auto& nm = obj->name;
-    //    const char* s = nm.c_str();
-    //    return (s && s[0]) ? s : "<noname>";
-    //}
+    std::string_view ToString(RE::MagicSystem::CastingSource source) {
+        using S = RE::MagicSystem::CastingSource;
+        switch (source) {
+            case S::kLeftHand:
+                return "kLeftHand";
+            case S::kRightHand:
+                return "kRightHand";
+            case S::kInstant:
+                return "kInstant";
+            case S::kOther:
+                return "kOther";
+            default:
+                return "Unknown";
+        }
+    }
 
     std::string_view SafeNodeName(const RE::NiAVObject* obj) {
         if (!obj) return "<null>";

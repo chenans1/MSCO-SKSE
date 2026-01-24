@@ -8,6 +8,7 @@ namespace utils {
     std::string_view ToString(RE::MagicCaster::State state);
     std::string_view ToString(RE::MagicSystem::CastingType type);
     std::string_view ToString(RE::MagicSystem::SpellType type);
+    std::string_view ToString(RE::MagicSystem::CastingSource type);
 
     //static const char* SafeNodeName(const RE::NiAVObject* obj);
     // Naming helpers

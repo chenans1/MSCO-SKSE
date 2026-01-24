@@ -1,24 +1,15 @@
 #include "PCH.h"
 
 #include "AnimEventFramework.h"
-#include "magichandler.h"
+#include "magichandler.h"   
 #include "PayloadHandler.h"
 #include "settings.h"
-
+#include "utils.h"
 using namespace SKSE;
 using namespace SKSE::log;
 using namespace SKSE::stl;
 
 namespace MSCO {
-    static const char* SafeName(const RE::NiAVObject* obj) {
-        if (!obj) return "<null>";
-        // NiAVObject usually has BSFixedString name
-        // In CommonLib: obj->name.c_str()
-        const auto& nm = obj->name;
-        const char* s = nm.c_str();
-        return (s && s[0]) ? s : "<noname>";
-    }
-
     //log node function
     static void LogNodeBasic(const RE::NiAVObject* obj, std::string_view label) {
         if (!obj) {
@@ -27,8 +18,7 @@ namespace MSCO {
 
         // AsNode() returns NiNode* if it is a node (or nullptr)
         auto* node = const_cast<RE::NiAVObject*>(obj)->AsNode();
-        log::info("[AnimEventFramework] {}: ptr={} name='{}' isNode={} rtti={}", label, fmt::ptr(obj), SafeName(obj), node != nullptr,
-                  fmt::ptr(obj->GetRTTI()));  // optional: RTTI pointer
+        log::info("[AnimEventFramework] {}: ptr={} name='{}' isNode={} rtti={}", label, fmt::ptr(obj), utils::SafeNodeName(obj), node != nullptr, fmt::ptr(obj->GetRTTI()));  // optional: RTTI pointer
     }
 
     // logging the charge time
@@ -37,55 +27,10 @@ namespace MSCO {
         if (!actorName || actorName[0] == '\0') {
             actorName = "<unnamed actor>";
         }
-        log::info("[AnimEventFramework] {} | actor='{}' | chargeTime={:.3f} | speed={:.3f}", tag.data(), actorName,
-                  chargetime, speed);
+        log::info("[AnimEventFramework] {} | actor='{}' | chargeTime={:.3f} | speed={:.3f}", 
+            tag.data(), actorName, chargetime, speed);
     }
-
-    //log state
-    static std::string_view convert_state(RE::MagicCaster::State state) {
-        using S = RE::MagicCaster::State;
-        switch (state) {
-            case S::kNone:
-                return "None";
-            case S::kUnk01:
-                return "Unk01";
-            case S::kUnk02:
-                return "Unk02";
-            case S::kReady:
-                return "kReady";
-            case S::kUnk04:
-                return "Unk04/kRelease";
-            case S::kCharging:
-                return "kCharging/kUnk05";
-            case S::kCasting:
-                return "kCasting/kConcentrating";
-            case S::kUnk07:
-                return "Unk07";
-            case S::kUnk08:
-                return "kUnk07/Interrupt";
-            case S::kUnk09:
-                return "kUnk09/Interrupt/Deselect";
-            default:
-                return "Unknown";
-        }
-    }
-
-    static std::string_view convertCastingType(RE::MagicSystem::CastingType type) {
-        using T = RE::MagicSystem::CastingType;
-        switch (type) {
-            case T::kConstantEffect:
-                return "kConstantEffect";
-            case T::kFireAndForget:
-                return "kFireAndForget";
-            case T::kConcentration:
-                return "kConcentration";
-            case T::kScroll:
-                return "kScroll";
-            default:
-                return "Unknown";
-        }
-    }
-    
+        
     //node replace to change the location of where the spell fires from
     static void replaceNode(RE::Actor* actor, RE::MagicSystem::CastingSource ogSource, RE::MagicSystem::CastingSource outputSource) {
         if (auto root = actor->Get3D()) {
@@ -99,18 +44,21 @@ namespace MSCO {
             if (!actorCaster) {
                 log::warn("[AnimEventFramework] replaceNode: null ActorMagicCaster slot={}", slot); return;
             }
-            auto bone = root->GetObjectByName(nodeName);
-            if (auto output_node = bone->AsNode()) {
-                actorCaster->magicNode = output_node;
-                if (settings::IsLogEnabled()) {
-                    if (auto* node = actorCaster->GetMagicNode()) {
-                        LogNodeBasic(node, "ActorCaster magicNode");
-                    }
-                }
+
+            auto* obj = root->GetObjectByName(nodeName);
+            auto* replacedment_node = obj ? const_cast<RE::NiAVObject*>(obj)->AsNode() : nullptr;
+
+            if (!replacedment_node) {
+                log::warn("[AnimEventFramework] replaceNode: failed to resolve replacedment_node '{}' (resolved='{}')", 
+                    nodeName, utils::SafeNodeName(obj));
                 return;
-            } else {
-                log::warn("[AnimEventFramework] null output_node"); return;
             }
+            actorCaster->magicNode = replacedment_node;
+            if (settings::IsLogEnabled()) {
+                log::info("[AnimEventFramework] replaceNode: actor='{}' original source ={} output_node='{}' ptr={}",
+                          utils::SafeActorName(actor), utils::ToString(ogSource), utils::SafeNodeName(replacedment_node), fmt::ptr(replacedment_node));
+            }
+            return;
         }
     }
     
@@ -191,7 +139,7 @@ namespace MSCO {
             return 1.0f;
         }
         //auto cfg = getCFG();
-        auto cfg = settings::GetChargeSpeedCFG();
+        const auto cfg = settings::GetChargeSpeedCFG();
         float speed = 1.0f;
         if (expMode) {
             speed = getSpeedExp(chargeTime, cfg.shortest, cfg.longest, cfg.baseTime, cfg.minSpeed, cfg.maxSpeed, cfg.expFactor);
@@ -382,13 +330,13 @@ namespace MSCO {
             if (CastingType != RE::MagicSystem::CastingType::kFireAndForget && CastingType != RE::MagicSystem::CastingType::kScroll) {
                 if (settings::IsLogEnabled()) {
                     log::info("[AnimEventFramework] {}: '{}', CastingType = {} spell ignored", 
-                    tag.data(), CurrentSpell->GetFullName(),convertCastingType(CastingType));
+                    tag.data(), utils::SafeSpellName(CurrentSpell), utils::ToString(CastingType));
                 }
                 return false;
             }
 
             if (settings::IsLogEnabled()) {
-                log::info("[AnimEventFramework] {}: '{}', CastingType = {}", tag.data(), CurrentSpell->GetFullName(), convertCastingType(CastingType));
+                log::info("[AnimEventFramework] {}: '{}', CastingType = {}", tag.data(), utils::SafeSpellName(CurrentSpell), utils::ToString(CastingType));
             }
 
             auto magicCaster = actor->GetMagicCaster((beginHand == MSCO::Magic::Hand::Right)
@@ -399,21 +347,22 @@ namespace MSCO {
                 return false;
             }
 
-            if (settings::IsLogEnabled()) {
-                // check delivery type on magicCaster->currentSpell
-                const auto* casterSpell = magicCaster->currentSpell;
-                if (casterSpell) {
-                    const auto casterSpellType = casterSpell->GetCastingType();
-                    log::info("[AnimEventFramework] {}: magicCaster->currentSpell = '{}', casterSpellType = {}",
-                        tag.data(), casterSpell->GetFullName(), convertCastingType(casterSpellType));
-                }
-            }
-            
+            //if (settings::IsLogEnabled()) {
+            //    // check delivery type on magicCaster->currentSpell
+            //    const auto* casterSpell = magicCaster->currentSpell;
+            //    if (casterSpell) {
+            //        const auto casterSpellType = casterSpell->GetCastingType();
+            //        log::info("[AnimEventFramework] {}: magicCaster->currentSpell = '{}', casterSpellType = {}",
+            //                  tag.data(), utils::SafeSpellName(casterSpell), utils::ToString(casterSpellType));
+            //    }
+            //}
+            //
             //additional state check to block wonky behaviors maybe?
             /*const auto currentMagicState = magicCaster->state.get();
             if (currentMagicState >= RE::MagicCaster::State::kReady) {
-                if (settings::IsLogEnabled()) log::info("[AnimEventFramework] {}: caster state = {}, ignore event", tag.data(), convert_state(currentMagicState)); return true;
+                if (settings::IsLogEnabled()) log::info("[AnimEventFramework] {}: caster state = {}, ignore event", tag.data(), utils::ToString(currentMagicState)); return true;
             }*/
+
             if (!actor->SetGraphVariableInt("iMSCO_ON"sv, 1)) log::warn("[AnimEventFramework] {}: set iMSCO_ON == 1 failed", tag.data());
             //turns out the game actually already sets the dual casting value correctly by the time we intercept begincastleft
             const bool wantDualCasting = magicCaster->GetIsDualCasting();
@@ -596,7 +545,7 @@ namespace MSCO {
             if (auto* spell = form->As<RE::SpellItem>()) {
                 if (settings::IsLogEnabled()) {
                     const auto castingType = spell->GetCastingType();
-                    log::info("[GetEquippedMagicItemForHand]: spellItem = '{}', casting type = {}", spell->GetFullName(), convertCastingType(castingType));
+                    log::info("[GetEquippedMagicItemForHand]: spellItem = '{}', casting type = {}", utils::SafeSpellName(spell), utils::ToString(castingType));
                 }
                 return spell;  // SpellItem is a MagicItem
             }   
@@ -620,7 +569,7 @@ namespace MSCO {
 
         if (settings::IsLogEnabled()) {
             const auto castingType = ench->GetCastingType();
-            log::info("[GetEquippedMagicItemForHand]: enchItem = '{}', casting type = {}", ench->GetFullName(), convertCastingType(castingType));
+            log::info("[GetEquippedMagicItemForHand]: enchItem = '{}', casting type = {}", utils::SafeSpellName(ench), utils::ToString(castingType));
         }
         return ench;
     }
