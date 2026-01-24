@@ -21,4 +21,5 @@ namespace settings {
     void __stdcall RenderMenuPage();
     void load();
     void save();
+    bool IsLogEnabled();
 }

@@ -153,8 +153,8 @@ namespace settings {
         c.expFactor = ini_float(ini, "Exp", "ExpFactor", c.expFactor);
 
         validate(c);
-        SKSE::log::info("Settings loaded: ChargeOn={}, Exp={}, NPC={}, Player={}", c.chargeMechanicOn, c.expMode,
-                        c.NPCAllowed, c.PlayerAllowed);
+        SKSE::log::info("Settings loaded: Logging={}, ChargeOn={}, Exp={}, NPC={}, Player={}", 
+            c.log, c.chargeMechanicOn, c.expMode,c.NPCAllowed, c.PlayerAllowed);
 
         log::info("Loaded ini Settings");
     }
