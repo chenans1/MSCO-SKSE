@@ -1,8 +1,12 @@
 #include "payloadhandler.h"
+#include "PCH.h"
 #include <charconv>
 #include <cctype>
 #include <algorithm>
 #include <cmath>
+#include <optional>
+#include <string_view>
+
 using namespace SKSE;
 using namespace SKSE::log;
 using namespace SKSE::stl;

@@ -1,4 +1,7 @@
 #include "attackhandler.h"
+#include "PCH.h"
+#include <cstring>
+
 using namespace SKSE;
 using namespace SKSE::log;
 using namespace SKSE::stl;

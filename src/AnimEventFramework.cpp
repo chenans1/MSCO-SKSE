@@ -1,4 +1,8 @@
 #include "AnimEventFramework.h"
+#include "magichandler.h"
+#include "PayloadHandler.h"
+#include "PCH.h"
+
 using namespace SKSE;
 using namespace SKSE::log;
 using namespace SKSE::stl;
@@ -26,77 +30,7 @@ namespace MSCO {
         log::info("[Node] {}: ptr={} name='{}' isNode={} rtti={}", label, fmt::ptr(obj), SafeName(obj), node != nullptr,
                   fmt::ptr(obj->GetRTTI()));  // optional: RTTI pointer
     }
-
-    static std::string_view logState(RE::Actor* actor, MSCO::Magic::Hand hand) {
-        if (!actor) return "Invalid actor";
-
-        const auto source = MSCO::Magic::HandToSource(hand);
-        auto* caster = actor->GetMagicCaster(source);
-        if (!caster) return "No MagicCaster";
-
-        using S = RE::MagicCaster::State;
-        const S state = caster->state.get();
-
-        switch (state) {
-            case S::kNone:
-                return "None";
-            case S::kUnk01:
-                return "Unk01";
-            case S::kUnk02:
-                return "Unk02";
-            case S::kReady:
-                return "Ready";
-            case S::kUnk04:
-                return "Unk04";
-            case S::kCharging:
-                return "Charging";
-            case S::kCasting:
-                return "Casting";
-            case S::kUnk07:
-                return "Unk07";
-            case S::kUnk08:
-                return "Interrupt";
-            case S::kUnk09:
-                return "Interrupt/Deselect";
-            default:
-                return "Unknown";
-        }
-    }
-
-    static std::string_view logState2(RE::Actor* actor, RE::MagicSystem::CastingSource source) {
-        if (!actor) return "Invalid actor";
-        auto* caster = actor->GetMagicCaster(source);
-        if (!caster) return "No MagicCaster";
-
-        using S = RE::MagicCaster::State;
-        const S state = caster->state.get();
-
-        switch (state) {
-            case S::kNone:
-                return "None";
-            case S::kUnk01:
-                return "Unk01";
-            case S::kUnk02:
-                return "Unk02";
-            case S::kReady:
-                return "Ready";
-            case S::kUnk04:
-                return "Unk04";
-            case S::kCharging:
-                return "Charging";
-            case S::kCasting:
-                return "Casting";
-            case S::kUnk07:
-                return "Unk07";
-            case S::kUnk08:
-                return "Interrupt";
-            case S::kUnk09:
-                return "Interrupt/Deselect";
-            default:
-                return "Unknown";
-        }
-    }
-
+    
     static std::string_view convert_state(RE::MagicCaster::State state) {
         using S = RE::MagicCaster::State;
         switch (state) {
@@ -402,7 +336,6 @@ namespace MSCO {
                 log::warn("No CurrentSpell");
                 return false;
             }
-            //log::info("MRh_SpellFire_Event state = {}", logState2(actor, RE::MagicSystem::CastingSource::kRightHand));
             const auto parsed = MSCO::ParseSpellFire(payload);
             auto output_source = parsed.src.value_or(RE::MagicSystem::CastingSource::kRightHand);
             if (MSCO::Magic::ConsumeResource(RE::MagicSystem::CastingSource::kRightHand, actor, CurrentSpell, false, 1.0f)) {
@@ -423,7 +356,6 @@ namespace MSCO {
                 log::warn("No CurrentSpell");
                 return false;
             }
-            //log::info("MLh_SpellFire_Event state = {}", logState2(actor, RE::MagicSystem::CastingSource::kLeftHand));
             const auto parsed = ParseSpellFire(payload);
             auto output_source = parsed.src.value_or(RE::MagicSystem::CastingSource::kLeftHand);
             if (MSCO::Magic::ConsumeResource(RE::MagicSystem::CastingSource::kLeftHand, actor, CurrentSpell, GetGraphBool(actor, "bMSCODualCasting"), 1.0f)) {
@@ -487,8 +419,6 @@ namespace MSCO {
                     magicCaster->castingTimer = 0.02f;
                 }
                 if (!actor->IsPlayerRef()) {
-                    log::info("BeginCast state = {}", logState2(actor, RE::MagicSystem::CastingSource::kLeftHand));
-                    //actor->NotifyAnimationGraph("MLh_SpellRelease_Event");
                     magicCaster->state.set(RE::MagicCaster::State::kUnk04);
                 }
                 return false;
@@ -497,9 +427,10 @@ namespace MSCO {
             //need to grab the other hand, check if it's fnf in order to handle sending the LR event properly
             RE::MagicItem* otherSpell = GetEquippedMagicItemForHand(actor, (beginHand == MSCO::Magic::Hand::Right) ? MSCO::Magic::Hand::Left : MSCO::Magic::Hand::Right);
             const bool otherisFNF = otherSpell && otherSpell->GetCastingType() == RE::MagicSystem::CastingType::kFireAndForget;
-            const RE::MagicSystem::CastingSource currentSource = (beginHand == MSCO::Magic::Hand::Right)
+            /*const RE::MagicSystem::CastingSource currentSource = (beginHand == MSCO::Magic::Hand::Right)
                                                                      ? RE::MagicSystem::CastingSource::kRightHand
-                                                                     : RE::MagicSystem::CastingSource::kLeftHand;
+                                                                     : RE::MagicSystem::CastingSource::kLeftHand;*/
+
             //gonna check if we want to cast the other hand if that's the case we send the MSCO_start_lr event instead
             if (!otherisFNF) {
                 if (actor->SetGraphVariableBool(
@@ -517,9 +448,7 @@ namespace MSCO {
                 } else {
                     magicCaster->castingTimer = 0.02f;
                 }
-                //log::info("BeginCast state = {}", logState2(actor, currentSource));
                 if (!actor->IsPlayerRef()) {
-                    log::info("BeginCast state = {}", logState2(actor, currentSource));
                     magicCaster->state.set(RE::MagicCaster::State::kUnk04);
                 }
                 return false;
@@ -540,10 +469,7 @@ namespace MSCO {
                 } else {
                     magicCaster->castingTimer = 0.02f;
                 }
-                //log::info("BeginCast state = {}", logState2(actor, currentSource));
-                //log::info("casting timer at begincast: {}", actorCaster->castingTimer);
                 if (!actor->IsPlayerRef()) {
-                    log::info("BeginCast state = {}", logState2(actor, currentSource));
                     magicCaster->state.set(RE::MagicCaster::State::kUnk04);
                 }
                 return false;
@@ -554,7 +480,6 @@ namespace MSCO {
         MSCO::Magic::Hand firingHand{};
         if (IsMSCOEvent(tag, firingHand)) {
             //log::info("msco casting event detected");
-            //log::info("{} state = {}", tag.data(),logState2(actor, currentSource));
             const RE::MagicSystem::CastingSource currentSource = (firingHand == MSCO::Magic::Hand::Right)
                                                                      ? RE::MagicSystem::CastingSource::kRightHand
                                                                      : RE::MagicSystem::CastingSource::kLeftHand;

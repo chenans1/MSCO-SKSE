@@ -1,7 +1,4 @@
 #pragma once
-#include "PCH.h"
-#include "magichandler.h"
-#include "PayloadHandler.h"
 
 namespace MSCO {
     class AnimEventHook {

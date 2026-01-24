@@ -1,5 +1,4 @@
 #pragma once
-#include "PCH.h"
 
 namespace MSCO {
     class SpellCastEventHandler : public RE::BSTEventSink<RE::TESSpellCastEvent> {

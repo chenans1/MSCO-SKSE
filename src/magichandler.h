@@ -1,6 +1,4 @@
 #pragma once
-#include "PCH.h"
-#include "soundhandler.h"
 
 namespace MSCO::Magic {
 
