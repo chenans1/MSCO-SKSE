@@ -1,7 +1,7 @@
 #include "AnimEventFramework.h"
-
 using namespace SKSE;
 using namespace SKSE::log;
+using namespace SKSE::stl;
 using namespace std::literals;
 
 namespace MSCO {
@@ -27,7 +27,7 @@ namespace MSCO {
                   fmt::ptr(obj->GetRTTI()));  // optional: RTTI pointer
     }
 
-    std::string_view logState(RE::Actor* actor, MSCO::Magic::Hand hand) {
+    static std::string_view logState(RE::Actor* actor, MSCO::Magic::Hand hand) {
         if (!actor) return "Invalid actor";
 
         const auto source = MSCO::Magic::HandToSource(hand);
@@ -63,7 +63,7 @@ namespace MSCO {
         }
     }
 
-    std::string_view logState2(RE::Actor* actor, RE::MagicSystem::CastingSource source) {
+    static std::string_view logState2(RE::Actor* actor, RE::MagicSystem::CastingSource source) {
         if (!actor) return "Invalid actor";
         auto* caster = actor->GetMagicCaster(source);
         if (!caster) return "No MagicCaster";
@@ -97,7 +97,7 @@ namespace MSCO {
         }
     }
 
-    std::string_view convert_state(RE::MagicCaster::State state) {
+    static std::string_view convert_state(RE::MagicCaster::State state) {
         using S = RE::MagicCaster::State;
         switch (state) {
             case S::kNone:

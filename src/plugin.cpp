@@ -1,12 +1,14 @@
-using namespace SKSE;
-using namespace SKSE::log;
-using namespace SKSE::stl;
-
 #include <Windows.h>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/msvc_sink.h>
 #include "attackhandler.h"
 #include "AnimEventFramework.h"
+#include "PCH.h"
+
+using namespace SKSE;
+using namespace SKSE::log;
+using namespace SKSE::stl;
+using namespace std::literals;
 
 namespace {
     void initialize_log() {

@@ -1,10 +1,7 @@
-#include "PCH.h"
 #include "magichandler.h"
-#include "soundhandler.h"
-
-using namespace RE;
 using namespace SKSE;
 using namespace SKSE::log;
+using namespace SKSE::stl;
 using namespace std::literals;
 
 namespace MSCO::Magic {
@@ -46,97 +43,6 @@ namespace MSCO::Magic {
             return nullptr;
         }
         return spell->As<RE::MagicItem>();
-    }
-
-    bool CastEquippedHand(RE::Actor* actor, Hand hand, bool dualCast) {
-        if (!actor) {
-            log::warn("No Actor for CastEquippedHand()");
-            return false;
-        }
-        
-        auto* spell = GetEquippedSpellHand(actor, hand);
-
-        if (!spell) {
-            log::warn("[MagicHandler] No spell equipped in {} hand", hand == Hand::Right ? "right" : "left");
-            return false;
-        }
-        // fetch the eequipped hand spells
-        const auto source = HandToSource(hand);
-
-        auto caster = actor->GetMagicCaster(source);
-        if (!caster) {
-            log::warn("[MagicHandler] Actor {} has no MagicCaster for source {}", actor->GetName(), std::to_underlying(source));
-            return false;
-        }
-        
-        caster->SetDualCasting(dualCast);
-
-        //get the spell cost and check if the actor can actually cast spell
-        float spellCost = spell->CalculateMagickaCost(actor);
-        
-        if (dualCast) {
-            spellCost = RE::MagicFormulas::CalcDualCastCost(spellCost);
-        }
-        if (spellCost < 0.0f) {spellCost = 0.0f;} //handle weird negative values
-        
-        RE::ActorValueOwner* actorAV = actor->AsActorValueOwner();
-        if (!actorAV) {
-            log::warn("[MagicHandler] No actor value");
-            return false;
-        }
-
-        float curMagicka = actorAV->GetActorValue(RE::ActorValue::kMagicka);
-        if (spellCost > 0.0f && curMagicka + 0.1f < spellCost) {
-            //log::info("cannot cast has {} magicka < {} cost", curMagicka, spellCost);
-            RE::HUDMenu::FlashMeter(RE::ActorValue::kMagicka);
-            return false;
-        }
-
-        if (spellCost > 0.0f) {
-           /* actorAV->RestoreActorValue(RE::ACTOR_VALUE_MODIFIER::kDamage, RE::ActorValue::kMagicka, -spellCost);*/
-            actorAV->DamageActorValue(RE::ActorValue::kMagicka, spellCost);
-        }
-
-        //self targeted spells should target the caster
-        RE::Actor* target = nullptr;
-        auto& rd = actor->GetActorRuntimeData();
-        if (spell->GetDelivery() == RE::MagicSystem::Delivery::kSelf) {
-            // self-targeted spells: target is the actor
-            target = actor;
-        } else {
-            // try combat target; if none, fall back to self
-            target = rd.currentCombatTarget.get().get();
-            if (!target) {
-                target = actor;
-            }
-        }
-
-        float effectiveness = 1.0f;
-        float magnitudeOverride = 0.0f;
-        //fetch sound and play
-        /*RE::BGSSoundDescriptorForm* releaseSound = MSCO::Sound::GetMGEFSound(spell);
-        if (releaseSound) MSCO::Sound::play_sound(actor, releaseSound);*/
-        const int slot =
-            (hand == MSCO::Magic::Hand::Left) ? RE::Actor::SlotTypes::kLeftHand : RE::Actor::SlotTypes::kRightHand;
-
-        auto* actorCaster = rd.magicCasters[slot];
-        actorCaster->PrepareSound(RE::MagicSystem::SoundID::kRelease, spell); //Doesn't seem to actually do anything, probably something to do with detection events?
-        actorCaster->PlayReleaseSound(spell);  // idk what this does but maybe it sends a detection event? no clue
-
-        caster->CastSpellImmediate(spell,              // spell
-                                   false,              // noHitEffectArt
-                                   target,            // target
-                                   effectiveness,      // effectiveness
-                                   false,               // hostileEffectivenessOnly
-                                   magnitudeOverride,  // magnitudeOverride
-                                   actor               // cause (blame the caster so XP/aggro work)
-        );
-        
-        //actorCaster->SpellCast(true, 1 ,spell);
-        //log::info("SUCESSFULLY CASTED");
-        caster->SetDualCasting(false); //just in case
-        
-        return true;
     }
 
     bool ConsumeResource(RE::MagicSystem::CastingSource source, RE::Actor* actor, RE::MagicItem* spell, bool dualCast, float costmult) {

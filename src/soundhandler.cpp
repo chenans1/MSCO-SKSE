@@ -1,7 +1,8 @@
-#include "PCH.h"
 #include "soundhandler.h"
 using namespace SKSE;
 using namespace SKSE::log;
+using namespace SKSE::stl;
+using namespace std::literals;
 
 namespace MSCO::Sound {
 	//plays sound if it exists on the actor. adapted from DTRY's payload and spell hotbar2

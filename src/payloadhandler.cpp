@@ -1,13 +1,11 @@
 #include "payloadhandler.h"
-#include "PCH.h"
-
 #include <charconv>
 #include <cctype>
 #include <algorithm>
 #include <cmath>
-
 using namespace SKSE;
 using namespace SKSE::log;
+using namespace SKSE::stl;
 using namespace std::literals;
 
 namespace MSCO {
