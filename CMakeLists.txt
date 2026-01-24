@@ -15,12 +15,11 @@ set(OUTPUT_FOLDER "D:/Skyrim SE MO2/mods/MSCO")
 
 set(SOURCES
     src/plugin.cpp
-    src/animeventhandler.cpp
     src/magichandler.cpp
-    src/soundhandler.cpp
-    src/inputhandler.cpp
     src/attackhandler.cpp
     src/AnimEventFramework.cpp
+    src/payloadhandler.cpp
+    src/soundhandler.cpp
     src/SpellCastEventHandler.cpp)
 
 # add_subdirectory("C:/SKSEdev/repos/template_test/extern/CommonLibVR-NG")
@@ -30,12 +29,11 @@ add_commonlibsse_plugin(${PROJECT_NAME} SOURCES ${SOURCES}) # <--- specifies plu
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23) # <--- use C++23 standard
 target_precompile_headers(${PROJECT_NAME} PRIVATE 
     src/PCH.h
-    src/animeventhandler.h
     src/magichandler.h
-    src/soundhandler.h
-    src/inputhandler.h
     src/attackhandler.h
     src/AnimEventFramework.h
+    src/payloadhandler.h
+    src/soundhandler.h
     src/SpellCastEventHandler.h) 
     
 
@@ -57,14 +55,12 @@ if(DEFINED OUTPUT_FOLDER)
         COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_FILE:${PROJECT_NAME}>" "${DLL_FOLDER}/$<TARGET_FILE_NAME:${PROJECT_NAME}>"
         VERBATIM
     )
-
-    # If you perform a "Debug" build, also copy .pdb file (for debug symbols)
-    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-        add_custom_command(
+    add_custom_command(
             TARGET "${PROJECT_NAME}"
             POST_BUILD
+            COMMAND "${CMAKE_COMMAND}" -E make_directory "${DLL_FOLDER}"
             COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_PDB_FILE:${PROJECT_NAME}>" "${DLL_FOLDER}/$<TARGET_PDB_FILE_NAME:${PROJECT_NAME}>"
             VERBATIM
         )
-    endif()
+   
 endif()
