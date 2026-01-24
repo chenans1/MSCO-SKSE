@@ -2,42 +2,13 @@
 
 #include "magichandler.h"
 #include "settings.h"
+#include "utils.h"
 
 using namespace SKSE;
 using namespace SKSE::log;
 using namespace SKSE::stl;
 
 namespace MSCO::Magic {
-    //static bool LogEnabled() { return settings::Get().log; }
-    // log state
-    static std::string_view convert_state(RE::MagicCaster::State state) {
-        using S = RE::MagicCaster::State;
-        switch (state) {
-            case S::kNone:
-                return "None";
-            case S::kUnk01:
-                return "Unk01";
-            case S::kUnk02:
-                return "Unk02";
-            case S::kReady:
-                return "kReady";
-            case S::kUnk04:
-                return "Unk04/kRelease";
-            case S::kCharging:
-                return "kCharging/kUnk05";
-            case S::kCasting:
-                return "kCasting/kConcentrating";
-            case S::kUnk07:
-                return "Unk07";
-            case S::kUnk08:
-                return "kUnk07/Interrupt";
-            case S::kUnk09:
-                return "kUnk09/Interrupt/Deselect";
-            default:
-                return "Unknown";
-        }
-    }
-
     static const char* SafeActorName(const RE::Actor* a) {
         if (!a) return "<null actor>";
         const char* n = a->GetName();
@@ -49,59 +20,6 @@ namespace MSCO::Magic {
         // GetFullName returns const char* on TESForm-derived, but MagicItem is TESForm-derived in practice.
         const char* n = m->GetFullName();
         return (n && n[0]) ? std::string_view{n} : std::string_view{"<noname spell>"};
-    }
-
-    static std::string_view convertCastingType(RE::MagicSystem::CastingType type) {
-        using T = RE::MagicSystem::CastingType;
-        switch (type) {
-            case T::kConstantEffect:
-                return "kConstantEffect";
-            case T::kFireAndForget:
-                return "kFireAndForget";
-            case T::kConcentration:
-                return "kConcentration";
-            case T::kScroll:
-                return "kScroll";
-            default:
-                return "Unknown";
-        }
-    }
-
-    static std::string_view convertSpellType(RE::MagicSystem::SpellType type) {
-        using T = RE::MagicSystem::SpellType;
-
-        switch (type) {
-            case T::kSpell:
-                return "Spell";
-            case T::kDisease:
-                return "Disease";
-            case T::kPower:
-                return "Power";
-            case T::kLesserPower:
-                return "LesserPower";
-            case T::kAbility:
-                return "Ability";
-            case T::kPoison:
-                return "Poison";
-            case T::kEnchantment:
-                return "Enchantment";
-            case T::kPotion:
-                return "Potion";
-            case T::kWortCraft:
-                return "WortCraft";
-            case T::kLeveledSpell:
-                return "LeveledSpell";
-            case T::kAddiction:
-                return "Addiction";
-            case T::kVoicePower:
-                return "VoicePower";
-            case T::kStaffEnchantment:
-                return "StaffEnchantment";
-            case T::kScroll:
-                return "Scroll";
-            default:
-                return "Unknown";
-        }
     }
 
     //grab spell casting hand source by flag
@@ -144,7 +62,7 @@ namespace MSCO::Magic {
             const auto castingType = spell->GetCastingType();
             const auto spellType = spell->GetSpellType();
             log::info("[MagicHandler] equipped spell = '{}', casting type = {}, spell type = {}", 
-                SafeSpellName(spell), convertCastingType(castingType), convertSpellType(spellType));
+                SafeSpellName(spell), utils::ToString(castingType), utils::ToString(spellType));
         }
         return spell;
     }
@@ -398,7 +316,7 @@ namespace MSCO::Magic {
             if (ShouldDenyRequestCast(state)) {
                 if (settings::IsLogEnabled()) {
                     log::info("[MagicHandler] Deny RequestCast: actor='{}' spell='{}' state={}", 
-                        SafeActorName(actor), SafeSpellName(spell), convert_state(state));
+                        SafeActorName(actor), SafeSpellName(spell), utils::ToString(state));
                 }
                 return;
             }
