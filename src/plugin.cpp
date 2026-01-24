@@ -72,6 +72,7 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
     MSCO::Magic::Install();
     log::info("Installed Magic::RequestCastImpl hook");
     settings::RegisterMenu();
+    settings::load();
     //InitializeEventSink();
     log::info("{} has finished loading.", plugin->GetName());
     return true;
