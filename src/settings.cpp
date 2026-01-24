@@ -198,4 +198,32 @@ namespace settings {
 
         log::info("Saved ini '{}'", path);
     }
+
+    //accessor functions
+    bool IsConvertChargeTime() { return Get().chargeMechanicOn; }
+    bool IsExpMode() { return Get().expMode; }
+    bool IsNPCAllowed() { return Get().NPCAllowed; }
+    bool IsPlayerAllowed() { return Get().PlayerAllowed; }
+    bool IsLogEnabled() { return Get().log; }
+    float GetNPCFactor() { return Get().NPCFactor; }
+
+    ChargeSpeedCFG GetChargeSpeedCFG() {
+        config c = Get();
+        validate(c);
+
+        ChargeSpeedCFG out{};
+        out.shortest = c.shortest;
+        out.longest = c.longest;
+        out.baseTime = c.basetime;
+        out.minSpeed = c.minspeed;
+        out.maxSpeed = c.maxspeed;
+        out.expFactor = c.expFactor;
+
+        out.npcFactor = c.NPCFactor;
+        out.expMode = c.expMode;
+        out.enabled = c.chargeMechanicOn;
+
+        return out;
+    }
+
 }

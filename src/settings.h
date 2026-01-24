@@ -16,10 +16,31 @@ namespace settings {
         float NPCFactor = 1.0;
     };
 
+    struct ChargeSpeedCFG {
+        float shortest;
+        float longest;
+        float baseTime;
+        float minSpeed;
+        float maxSpeed;
+        float expFactor;
+        float npcFactor;
+        bool expMode;
+        bool enabled;
+    };
+
     config& Get();
     void RegisterMenu();
     void __stdcall RenderMenuPage();
     void load();
     void save();
+
+    //accessors
+    bool IsConvertChargeTime(); 
+    bool IsExpMode();
+    bool IsNPCAllowed();
+    bool IsPlayerAllowed();
     bool IsLogEnabled();
+    float GetNPCFactor();
+
+    ChargeSpeedCFG GetChargeSpeedCFG();
 }
