@@ -1,6 +1,5 @@
-#include "attackhandler.h"
 #include "PCH.h"
-#include <cstring>
+#include "attackhandler.h"
 
 using namespace SKSE;
 using namespace SKSE::log;

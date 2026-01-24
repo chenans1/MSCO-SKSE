@@ -1,7 +1,8 @@
+#include "PCH.h"
+
 #include "AnimEventFramework.h"
 #include "magichandler.h"
 #include "PayloadHandler.h"
-#include "PCH.h"
 
 using namespace SKSE;
 using namespace SKSE::log;

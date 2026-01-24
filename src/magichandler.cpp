@@ -1,5 +1,6 @@
-#include "magichandler.h"
 #include "PCH.h"
+
+#include "magichandler.h"
 
 using namespace SKSE;
 using namespace SKSE::log;

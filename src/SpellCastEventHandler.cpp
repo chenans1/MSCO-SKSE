@@ -1,5 +1,6 @@
-#include "SpellCastEventHandler.h"
 #include "PCH.h"
+
+#include "SpellCastEventHandler.h"
 
 using namespace SKSE;
 using namespace SKSE::log;

@@ -1,5 +1,6 @@
-#include "soundhandler.h"
 #include "PCH.h"
+
+#include "soundhandler.h"
 
 using namespace SKSE;
 using namespace SKSE::log;
