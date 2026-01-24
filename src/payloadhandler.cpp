@@ -13,6 +13,15 @@ using namespace SKSE::log;
 using namespace SKSE::stl;
 
 namespace MSCO {
+    static bool ieq(std::string_view a, std::string_view b) {
+        if (a.size() != b.size()) return false;
+        for (size_t i = 0; i < a.size(); ++i) {
+            unsigned char ac = static_cast<unsigned char>(a[i]);
+            unsigned char bc = static_cast<unsigned char>(b[i]);
+            if (std::tolower(ac) != std::tolower(bc)) return false;
+        }
+        return true;
+    }
 
     //helpers
     bool IsSep(char c) { return c == ' ' || c == '\t' || c == ',' || c == ';'; }
@@ -30,10 +39,14 @@ namespace MSCO {
     }
 
     std::optional<RE::MagicSystem::CastingSource> ParseSource(std::string_view s) {
-        if (s == "left")    return RE::MagicSystem::CastingSource::kLeftHand;
+        /*if (s == "left")    return RE::MagicSystem::CastingSource::kLeftHand;
         if (s == "right")   return RE::MagicSystem::CastingSource::kRightHand;
         if (s == "other")   return RE::MagicSystem::CastingSource::kOther;
-        if (s == "instant") return RE::MagicSystem::CastingSource::kInstant;
+        if (s == "instant") return RE::MagicSystem::CastingSource::kInstant;*/
+        if (ieq(s, "left")) return RE::MagicSystem::CastingSource::kLeftHand;
+        if (ieq(s, "right")) return RE::MagicSystem::CastingSource::kRightHand;
+        if (ieq(s, "other")) return RE::MagicSystem::CastingSource::kOther;
+        if (ieq(s, "instant")) return RE::MagicSystem::CastingSource::kInstant;
         return std::nullopt;
     }
 
