@@ -243,7 +243,12 @@ namespace MSCO {
         RE::BSTEventSink<RE::BSAnimationGraphEvent>* a_sink,
         RE::BSAnimationGraphEvent* a_event,
         RE::BSTEventSource<RE::BSAnimationGraphEvent>* a_eventSource) {
-        if (NPCAllowed() && HandleEvent(a_event)) return RE::BSEventNotifyControl::kContinue;
+        if (!NPCAllowed()) {
+            return _originalNPC(a_sink, a_event, a_eventSource);
+        }
+        if (HandleEvent(a_event)) {
+            return RE::BSEventNotifyControl::kContinue;
+        }
         return _originalNPC(a_sink, a_event, a_eventSource);
     }
 
@@ -251,7 +256,12 @@ namespace MSCO {
         RE::BSTEventSink<RE::BSAnimationGraphEvent>* a_sink, 
         RE::BSAnimationGraphEvent* a_event,
         RE::BSTEventSource<RE::BSAnimationGraphEvent>* a_eventSource) {
-        if (PlayerAllowed() && HandleEvent(a_event)) return RE::BSEventNotifyControl::kContinue;
+        if (!PlayerAllowed()) {
+            return _originalPC(a_sink, a_event, a_eventSource);
+        }
+        if (HandleEvent(a_event)) {
+            return RE::BSEventNotifyControl::kContinue;
+        }
         return _originalPC(a_sink, a_event, a_eventSource);
     }    
 
