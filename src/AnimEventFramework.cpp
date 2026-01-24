@@ -7,7 +7,6 @@
 using namespace SKSE;
 using namespace SKSE::log;
 using namespace SKSE::stl;
-using namespace std::literals;
 
 namespace MSCO {
     static const char* SafeName(const RE::NiAVObject* obj) {

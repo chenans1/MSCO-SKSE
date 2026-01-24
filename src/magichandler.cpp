@@ -5,7 +5,6 @@
 using namespace SKSE;
 using namespace SKSE::log;
 using namespace SKSE::stl;
-using namespace std::literals;
 
 namespace MSCO::Magic {
     //grab spell casting hand source by flag

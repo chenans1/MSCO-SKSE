@@ -4,7 +4,6 @@
 using namespace SKSE;
 using namespace SKSE::log;
 using namespace SKSE::stl;
-using namespace std::literals;
 
 namespace MSCO {
     //using ProcessButton_t = void (RE::AttackBlockHandler::*)(RE::ButtonEvent*, RE::PlayerControlsData*);
