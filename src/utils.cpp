@@ -86,4 +86,30 @@ namespace utils {
         }
     }
 
+    //static const char* SafeNodeName(const RE::NiAVObject* obj) {
+    //    if (!obj) return "<null>";
+    //    // NiAVObject usually has BSFixedString name
+    //    // In CommonLib: obj->name.c_str()
+    //    const auto& nm = obj->name;
+    //    const char* s = nm.c_str();
+    //    return (s && s[0]) ? s : "<noname>";
+    //}
+
+    std::string_view SafeNodeName(const RE::NiAVObject* obj) {
+        if (!obj) return "<null>";
+        const char* s = obj->name.c_str();
+        return (s && s[0]) ? std::string_view{s} : "<noname>";
+    }
+
+    std::string_view SafeActorName(const RE::Actor* a) {
+        if (!a) return "<null actor>";
+        const char* n = a->GetName();
+        return (n && n[0]) ? std::string_view{n} : "<unnamed>";
+    }
+
+    std::string_view SafeSpellName(const RE::MagicItem* m) {
+        if (!m) return "<null spell>";
+        const char* n = m->GetFullName();
+        return (n && n[0]) ? std::string_view{n} : "<noname spell>";
+    }
 }
