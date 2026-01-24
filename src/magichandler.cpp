@@ -8,8 +8,7 @@ using namespace SKSE::log;
 using namespace SKSE::stl;
 
 namespace MSCO::Magic {
-    static bool LogEnabled() { return settings::Get().log; }
-
+    //static bool LogEnabled() { return settings::Get().log; }
     // log state
     static std::string_view convert_state(RE::MagicCaster::State state) {
         using S = RE::MagicCaster::State;
@@ -124,25 +123,6 @@ namespace MSCO::Magic {
             return nullptr;
         }
         auto& rd = actor->GetActorRuntimeData();
-        //std::size_t idx = static_cast<std::size_t>(hand);
-        //std::size_t other = idx ^ 1;
-        //RE::MagicItem* spell = nullptr;
-        // try strict hand index first?
-        //if (rd.selectedSpells[idx]) {
-        //    spell = rd.selectedSpells[idx];
-        //    //log::info("[MSCO] Using {}-hand spell: {}", hand == Hand::Right ? "right" : "left", spell->GetFullName());
-        //} else if (rd.selectedSpells[other]) {
-        //    //check other hand index
-        //    spell = rd.selectedSpells[other];
-        //    /*log::info("[MSCO] {} hand had no spell, using {} hand spell: {}", 
-        //        hand == Hand::Right ? "right" : "left",
-        //        hand == Hand::Right ? "left" : "right", spell->GetFullName());*/
-        //} else {
-        //    log::info("[MagicHandler] No spells in selectedSpells[0/1]");
-        //    return nullptr;
-        //}
-        //return spell->As<RE::MagicItem>();
-
         const std::size_t idx = (hand == Hand::Left) ? 0 : 1;
         const std::size_t other = idx ^ 1;
 
@@ -150,17 +130,17 @@ namespace MSCO::Magic {
         if (!spell) {
             // Optional fallback
             spell = rd.selectedSpells[other];
-            if (spell && LogEnabled()) {
+            if (spell && settings::IsLogEnabled()) {
                 log::info("[MagicHandler] {}: {} hand empty, falling back to other hand spell '{}'",
                           SafeActorName(actor), (hand == Hand::Left) ? "Left" : "Right", SafeSpellName(spell));
             }
         }
 
         if (!spell) {
-            if (LogEnabled()) log::info("[MagicHandler] {}: No spells in selectedSpells[0/1]", SafeActorName(actor));
+            if (settings::IsLogEnabled()) log::info("[MagicHandler] {}: No spells in selectedSpells[0/1]", SafeActorName(actor));
             return nullptr;
         }
-        if (LogEnabled()) {
+        if (settings::IsLogEnabled()) {
             const auto castingType = spell->GetCastingType();
             const auto spellType = spell->GetSpellType();
             log::info("[MagicHandler] equipped spell = '{}', casting type = {}, spell type = {}", 
@@ -208,7 +188,7 @@ namespace MSCO::Magic {
             if (cost < 0.0f) cost = 0.0f;
             const auto avToDamage = isLeftHand ? RE::ActorValue::kLeftItemCharge : RE::ActorValue::kRightItemCharge;
             if (cost > 0.0f) actorAV->DamageActorValue(avToDamage, cost);
-            if (LogEnabled()) {
+            if (settings::IsLogEnabled()) {
                 log::info("[consumeResource] {}: Staff '{}' cost={:.3f} (mult={:.3f})", 
                     SafeActorName(actor), weapon->GetFullName(), cost, costmult);
             }
@@ -218,7 +198,7 @@ namespace MSCO::Magic {
         float cost = spell->CalculateMagickaCost(actor);
         if (dualCast) cost = RE::MagicFormulas::CalcDualCastCost(cost);
         if (cost > 0.0f) actorAV->DamageActorValue(RE::ActorValue::kMagicka, cost);
-        if (LogEnabled()) {
+        if (settings::IsLogEnabled()) {
             log::info("[consumeResource] {}: Spell '{}' cost={:.3f} (mult={:.3f})", 
                 SafeActorName(actor), SafeSpellName(spell), cost, costmult);
         }
@@ -416,7 +396,7 @@ namespace MSCO::Magic {
             const auto state = caster->state.get();
             //if (state >= RE::MagicCaster::State::kUnk02) {return;}
             if (ShouldDenyRequestCast(state)) {
-                if (LogEnabled()) {
+                if (settings::IsLogEnabled()) {
                     log::info("[MagicHandler] Deny RequestCast: actor='{}' spell='{}' state={}", 
                         SafeActorName(actor), SafeSpellName(spell), convert_state(state));
                 }
