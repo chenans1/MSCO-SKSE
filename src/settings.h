@@ -12,6 +12,7 @@ namespace settings {
         bool expMode = true;
         bool NPCAllowed = true;
         bool PlayerAllowed = true;
+        bool log = false;
         float NPCFactor = 1.0;
     };
 

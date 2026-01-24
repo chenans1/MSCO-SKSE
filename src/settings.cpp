@@ -27,6 +27,7 @@ namespace settings {
         s_dirty |= ImGuiMCP::Checkbox("Use exponential mode", &c.expMode);
         s_dirty |= ImGuiMCP::Checkbox("NPCs use MSCO Animations", &c.NPCAllowed);
         s_dirty |= ImGuiMCP::Checkbox("Player uses MSCO Animations", &c.PlayerAllowed);
+        s_dirty |= ImGuiMCP::Checkbox("Enable Log", &c.log);
         ImGuiMCP::Separator();
         s_dirty |= ImGuiMCP::DragFloat("Shortest", &c.shortest, 0.01f, 0.0f, 5.0f, "%.3f");
         s_dirty |= ImGuiMCP::DragFloat("Longest", &c.longest, 0.01f, 0.0f, 5.0f, "%.3f");
@@ -89,7 +90,7 @@ namespace settings {
         }
     }
 
-    static void validate(config c) {
+    static void validate(config& c) {
         c.shortest = std::max(0.0f, c.shortest);
         c.longest = std::max(c.shortest, c.longest);
         c.basetime = std::clamp(c.basetime, c.shortest, c.longest);
@@ -97,6 +98,10 @@ namespace settings {
         // Speeds
         c.minspeed = std::max(0.01f, c.minspeed);
         c.maxspeed = std::max(c.minspeed, c.maxspeed);
+
+        if (c.minspeed > c.maxspeed) {
+            std::swap(c.minspeed, c.maxspeed);
+        }
 
         // NPC factor
         c.NPCFactor = std::max(0.0f, c.NPCFactor);
@@ -132,6 +137,7 @@ namespace settings {
         c.expMode = ini_bool(ini, "General", "ExpMode", c.expMode);
         c.NPCAllowed = ini_bool(ini, "General", "NPCAllowed", c.NPCAllowed);
         c.PlayerAllowed = ini_bool(ini, "General", "PlayerAllowed", c.PlayerAllowed);
+        c.log = ini_bool(ini, "General", "Log", c.log);
         c.NPCFactor = ini_float(ini, "General", "NPCFactor", c.NPCFactor);
 
         //charge time 
@@ -162,11 +168,14 @@ namespace settings {
         //on fail create new file 
         (void)ini.LoadFile(path);
 
+        validate(c);
+
         //general 
         ini.SetLongValue("General", "ChargeMechanicOn", c.chargeMechanicOn ? 1 : 0);
         ini.SetLongValue("General", "ExpMode", c.expMode ? 1 : 0);
         ini.SetLongValue("General", "NPCAllowed", c.NPCAllowed ? 1 : 0);
         ini.SetLongValue("General", "PlayerAllowed", c.PlayerAllowed ? 1 : 0);
+        ini.SetLongValue("General", "Log", c.log ? 1 : 0);
         ini.SetDoubleValue("General", "NPCFactor", static_cast<double>(c.NPCFactor), "%.3f");
 
         //charge time 
@@ -180,8 +189,7 @@ namespace settings {
 
         //exp factor
         ini.SetDoubleValue("Exp", "ExpFactor", static_cast<double>(c.expFactor), "%.3f");
-
-        validate(c);
+        
         const SI_Error rc = ini.SaveFile(path);
         if (rc < 0) {
             log::error("Failed to save ini '{}'. SI_Error={}", path, static_cast<int>(rc));
