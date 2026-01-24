@@ -20,6 +20,7 @@ namespace settings {
         float NPCFactor = 1.0;
     };
 
+    config& Get();
     void RegisterMenu();
     void __stdcall RenderMenuPage();
 }

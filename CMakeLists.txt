@@ -19,8 +19,6 @@ set(SOURCES
     src/attackhandler.cpp
     src/AnimEventFramework.cpp
     src/payloadhandler.cpp
-    src/soundhandler.cpp
-    src/SpellCastEventHandler.cpp
     src/settings.cpp)
 
 # add_subdirectory("C:/SKSEdev/repos/template_test/extern/CommonLibVR-NG")
@@ -34,8 +32,6 @@ target_precompile_headers(${PROJECT_NAME} PRIVATE
     src/attackhandler.h
     src/AnimEventFramework.h
     src/payloadhandler.h
-    src/soundhandler.h
-    src/SpellCastEventHandler.h
     src/settings.h) 
     
 

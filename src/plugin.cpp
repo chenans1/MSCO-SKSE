@@ -1,9 +1,10 @@
+#include "PCH.h"
 #include <Windows.h>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/msvc_sink.h>
 #include "attackhandler.h"
 #include "AnimEventFramework.h"
-#include "PCH.h"
+#include "settings.h"
 
 using namespace SKSE;
 using namespace SKSE::log;
@@ -70,6 +71,7 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
 
     MSCO::Magic::Install();
     log::info("Installed Magic::RequestCastImpl hook");
+    settings::RegisterMenu();
     //InitializeEventSink();
     log::info("{} has finished loading.", plugin->GetName());
     return true;
