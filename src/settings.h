@@ -29,18 +29,24 @@ namespace settings {
     };
 
     config& Get();
+
     void RegisterMenu();
     void __stdcall RenderMenuPage();
     void load();
     void save();
 
     //accessors
-    bool IsConvertChargeTime(); 
+    /*bool IsConvertChargeTime(); 
     bool IsExpMode();
     bool IsNPCAllowed();
     bool IsPlayerAllowed();
     bool IsLogEnabled();
-    float GetNPCFactor();
-
+    float GetNPCFactor();*/
+    inline bool IsConvertChargeTime() { return Get().chargeMechanicOn; }
+    inline bool IsExpMode() { return Get().expMode; }
+    inline bool IsNPCAllowed() { return Get().NPCAllowed; }
+    inline bool IsPlayerAllowed() { return Get().PlayerAllowed; }
+    inline bool IsLogEnabled() { return Get().log; }
+    inline float GetNPCFactor() { return Get().NPCFactor; }
     ChargeSpeedCFG GetChargeSpeedCFG();
 }

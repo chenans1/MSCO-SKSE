@@ -200,17 +200,16 @@ namespace settings {
     }
 
     //accessor functions
-    bool IsConvertChargeTime() { return Get().chargeMechanicOn; }
+    /*bool IsConvertChargeTime() { return Get().chargeMechanicOn; }
     bool IsExpMode() { return Get().expMode; }
     bool IsNPCAllowed() { return Get().NPCAllowed; }
     bool IsPlayerAllowed() { return Get().PlayerAllowed; }
     bool IsLogEnabled() { return Get().log; }
-    float GetNPCFactor() { return Get().NPCFactor; }
+    float GetNPCFactor() { return Get().NPCFactor; }*/
 
     ChargeSpeedCFG GetChargeSpeedCFG() {
-        config c = Get();
-        validate(c);
-
+        const auto& c = Get();
+        //validate(c);
         ChargeSpeedCFG out{};
         out.shortest = c.shortest;
         out.longest = c.longest;
@@ -223,6 +222,15 @@ namespace settings {
         out.expMode = c.expMode;
         out.enabled = c.chargeMechanicOn;
 
+        out.shortest = std::max(0.0f, out.shortest);
+        out.longest = std::max(out.shortest, out.longest);
+        out.baseTime = std::clamp(out.baseTime, out.shortest, out.longest);
+
+        out.minSpeed = std::max(0.01f, out.minSpeed);
+        out.maxSpeed = std::max(out.minSpeed, out.maxSpeed);
+
+        out.expFactor = std::clamp(out.expFactor, 0.01f, 10.0f);
+        out.npcFactor = std::max(0.0f, out.npcFactor);
         return out;
     }
 
