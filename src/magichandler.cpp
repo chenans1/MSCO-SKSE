@@ -295,19 +295,57 @@ namespace MSCO::Magic {
         return true;
     }
 
-    using RequestCast = void (*)(RE::MagicCaster* caster);
+    //switched from using <= to this for more fine grained tuning maybe? seems it anything above kunk02 needs to be denied
+    static bool ShouldDenyRequestCast(RE::MagicCaster::State state) {
+        using S = RE::MagicCaster::State;
+
+        switch (state) {
+            //case S::kUnk01:
+            case S::kUnk02: //start
+            case S::kReady: //kReady
+            case S::kUnk04: //kRelease
+            case S::kCharging: //actually the concentration state i think?
+            case S::kCasting: //Concentrating in IDA? seems like fnf also goes here for some reason
+            case S::kUnk07: // Unknown
+            //case S::kUnk08: // Interrupt
+            //case S::kUnk09: // Interrupt/Deselect
+                return true;
+
+            default:
+                return false;
+        }
+    }
+
+    using RequestCast = void (*)(RE::ActorMagicCaster*);
     static inline RequestCast RequestCastImpl = nullptr;
 
-    static void RequestCast_Hook(RE::MagicCaster* caster) {
-        if (caster->state.get() >= RE::MagicCaster::State::kUnk02 && caster->state.get() <= RE::MagicCaster::State::kCharging) {
-            log::info("denied requestcastimpl() function call");
+    static void RequestCast_Hook(RE::ActorMagicCaster* caster) {
+        if (!caster || !RequestCastImpl) return;
+        const auto* actor = caster->GetCasterAsActor();
+        if (!actor) {
+            RequestCastImpl(caster);
             return;
         }
-        if (RequestCastImpl) {
-            //log::info("requestcastimpl() accepted");
+        if (!actor->IsPlayerRef()) {
             RequestCastImpl(caster);
+            return;
         }
-        
+
+        //check for casting type being conc or not
+        const auto* spell = caster->currentSpell;
+        if (!spell) {
+            RequestCastImpl(caster);
+            return;
+        }
+        const auto castingType = spell->GetCastingType();
+        if (castingType == RE::MagicSystem::CastingType::kFireAndForget || castingType == RE::MagicSystem::CastingType::kScroll) {
+            const auto state = caster->state.get();
+            if (state >= RE::MagicCaster::State::kUnk02) {
+                return;
+            }
+        }
+        RequestCastImpl(caster);
+        return;
     }
 
     void Install() {
