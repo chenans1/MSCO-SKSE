@@ -7,3 +7,4 @@ cmake-build*
 Ids and stuff.txt
 SpellCast().txt
 finishCast().txt
+extern/SKSEMenuFramework.h
