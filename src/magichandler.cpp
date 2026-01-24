@@ -9,18 +9,6 @@ using namespace SKSE::log;
 using namespace SKSE::stl;
 
 namespace MSCO::Magic {
-    static const char* SafeActorName(const RE::Actor* a) {
-        if (!a) return "<null actor>";
-        const char* n = a->GetName();
-        return (n && n[0]) ? n : "<unnamed>";
-    }
-
-    static std::string_view SafeSpellName(const RE::MagicItem* m) {
-        if (!m) return "<null spell>";
-        // GetFullName returns const char* on TESForm-derived, but MagicItem is TESForm-derived in practice.
-        const char* n = m->GetFullName();
-        return (n && n[0]) ? std::string_view{n} : std::string_view{"<noname spell>"};
-    }
 
     //grab spell casting hand source by flag
     RE::MagicSystem::CastingSource HandToSource(Hand hand) {
@@ -50,31 +38,31 @@ namespace MSCO::Magic {
             spell = rd.selectedSpells[other];
             if (spell && settings::IsLogEnabled()) {
                 log::info("[MagicHandler] {}: {} hand empty, falling back to other hand spell '{}'",
-                          SafeActorName(actor), (hand == Hand::Left) ? "Left" : "Right", SafeSpellName(spell));
+                          utils::SafeActorName(actor), (hand == Hand::Left) ? "Left" : "Right", utils::SafeSpellName(spell));
             }
         }
 
         if (!spell) {
-            if (settings::IsLogEnabled()) log::info("[MagicHandler] {}: No spells in selectedSpells[0/1]", SafeActorName(actor));
+            if (settings::IsLogEnabled()) log::info("[MagicHandler] {}: No spells in selectedSpells[0/1]", utils::SafeActorName(actor));
             return nullptr;
         }
         if (settings::IsLogEnabled()) {
             const auto castingType = spell->GetCastingType();
             const auto spellType = spell->GetSpellType();
             log::info("[MagicHandler] equipped spell = '{}', casting type = {}, spell type = {}", 
-                SafeSpellName(spell), utils::ToString(castingType), utils::ToString(spellType));
+                utils::SafeSpellName(spell), utils::ToString(castingType), utils::ToString(spellType));
         }
         return spell;
     }
 
     bool ConsumeResource(RE::MagicSystem::CastingSource source, RE::Actor* actor, RE::MagicItem* spell, bool dualCast, float costmult) {
         if (!actor || !spell) {
-            log::warn("[consumeResource] {}: no ActorValueOwner", SafeActorName(actor)); return false;
+            log::warn("[consumeResource] {}: no ActorValueOwner", utils::SafeActorName(actor)); return false;
         }
 
         auto* actorAV = actor->AsActorValueOwner();
         if (!actorAV) {
-            log::warn("[consumeResource] {}: no ActorValueOwner", SafeActorName(actor)); return false;
+            log::warn("[consumeResource] {}: no ActorValueOwner", utils::SafeActorName(actor)); return false;
         }
 
         //check staff/enchantment first
@@ -84,20 +72,20 @@ namespace MSCO::Magic {
             auto* equippedObj = actor->GetEquippedObject(isLeftHand);
             if (!equippedObj) {
                 log::warn("[consumeResource] {}: enchantment cast but no equipped object ({})", 
-                    SafeActorName(actor), isLeftHand ? "L" : "R");
+                    utils::SafeActorName(actor), isLeftHand ? "L" : "R");
                 return false;
             }
 
             auto* weapon = equippedObj->As<RE::TESObjectWEAP>();
             if (!weapon) {
                 log::warn("[consumeResource] {}: enchantment cast but equipped object not a weapon ({})", 
-                    SafeActorName(actor), isLeftHand ? "L" : "R");
+                    utils::SafeActorName(actor), isLeftHand ? "L" : "R");
                 return false;
             }
 
             if (!weapon->IsStaff()) {
                 log::warn("[consumeResource] {}: enchantment item but weapon is not staff ({})",
-                    SafeActorName(actor), weapon->GetFullName());
+                          utils::SafeActorName(actor), weapon->GetFullName());
                 return false;
             }
             float cost = enchItem->CalculateMagickaCost(actor);
@@ -108,7 +96,7 @@ namespace MSCO::Magic {
             if (cost > 0.0f) actorAV->DamageActorValue(avToDamage, cost);
             if (settings::IsLogEnabled()) {
                 log::info("[consumeResource] {}: Staff '{}' cost={:.3f} (mult={:.3f})", 
-                    SafeActorName(actor), weapon->GetFullName(), cost, costmult);
+                    utils::SafeActorName(actor), weapon->GetFullName(), cost, costmult);
             }
             return true;
         }
@@ -118,67 +106,9 @@ namespace MSCO::Magic {
         if (cost > 0.0f) actorAV->DamageActorValue(RE::ActorValue::kMagicka, cost);
         if (settings::IsLogEnabled()) {
             log::info("[consumeResource] {}: Spell '{}' cost={:.3f} (mult={:.3f})", 
-                SafeActorName(actor), SafeSpellName(spell), cost, costmult);
+                utils::SafeActorName(actor), utils::SafeSpellName(spell), cost, costmult);
         }
         return true;
-        //auto* enchItem = spell->As<RE::EnchantmentItem>();
-        //const bool isEnchantment = enchItem != nullptr;
-        //if (isEnchantment) {  // assume it's a staff in this case
-        //    const bool isLeftHand = source == RE::MagicSystem::CastingSource::kLeftHand;
-        //    if (auto* equippedObj = actor->GetEquippedObject(isLeftHand)) {
-        //        if (auto* weapon = equippedObj->As<RE::TESObjectWEAP>()) {
-        //            if (!weapon->IsStaff()) {
-        //                log::warn("[consumeResource] Not staff, ignore");
-        //                return false;
-        //            }
-        //        } else {
-        //            log::warn("[consumeResource] No Weapon on Enchantment, ignore");
-        //            return false;
-        //        }
-        //    }
-        //    float spellCost = enchItem->CalculateMagickaCost(actor);
-        //    // float spellCost = static_cast<float>(enchItem->data.costOverride);
-
-        //    if (dualCast) {  // staves dont dual cast but I might want this feature someday
-        //        spellCost = RE::MagicFormulas::CalcDualCastCost(spellCost);
-        //    }
-        //    spellCost = spellCost * costmult;
-
-        //    RE::ActorValueOwner* actorAV = actor->AsActorValueOwner();
-        //    if (!actorAV) {
-        //        log::warn("[consumeResource] No actor value");
-        //        return false;
-        //    }
-
-        //    if (spellCost > 0.0f) {
-        //        auto avToDamage = (isLeftHand) ? RE::ActorValue::kLeftItemCharge : RE::ActorValue::kRightItemCharge;
-        //        actorAV->DamageActorValue(avToDamage, spellCost);
-        //    }
-        //    return true;
-
-        //} else {
-        //    RE::ActorValueOwner* actorAV = actor->AsActorValueOwner();
-        //    if (!actorAV) {
-        //        log::warn("[consumeResource] No actor value");
-        //        return false;
-        //    }
-        //    float spellCost = spell->CalculateMagickaCost(actor);
-
-        //    if (dualCast) {
-        //        spellCost = RE::MagicFormulas::CalcDualCastCost(spellCost);
-        //    }
-
-        //    spellCost = spellCost * costmult;  // apply costmult param
-        //    if (spellCost < 0.0f) spellCost = 0.0f;
-        //    float curMagicka = actorAV->GetActorValue(RE::ActorValue::kMagicka);
-        //    if (spellCost > 0.0f && curMagicka < spellCost) {
-        //        // log::info("cannot cast has {} magicka < {} cost", curMagicka, spellCost);
-        //        //RE::HUDMenu::FlashMeter(RE::ActorValue::kMagicka);
-        //        return false;
-        //    }
-        //    if (spellCost > 0.0f) actorAV->DamageActorValue(RE::ActorValue::kMagicka, spellCost);
-        //    return true;
-        //}
     }
     
     //bool Spellfire(RE::MagicSystem::CastingSource source, RE::Actor* actor, RE::MagicItem* spell, bool dualCast, float magmult, RE::MagicSystem::CastingSource outputSource) {
@@ -316,7 +246,7 @@ namespace MSCO::Magic {
             if (ShouldDenyRequestCast(state)) {
                 if (settings::IsLogEnabled()) {
                     log::info("[MagicHandler] Deny RequestCast: actor='{}' spell='{}' state={}", 
-                        SafeActorName(actor), SafeSpellName(spell), utils::ToString(state));
+                        utils::SafeActorName(actor), utils::SafeSpellName(spell), utils::ToString(state));
                 }
                 return;
             }
