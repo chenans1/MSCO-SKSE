@@ -27,23 +27,25 @@ namespace MSCO {
                     if (std::strcmp(s, "Left Attack/Block") == 0) {
                         ok = player->GetGraphVariableInt("MSCO_left_lock", lock);
                         //log::info("[ABHook] {} ok={} lock={}", s, ok, lock);
-                        if (auto* playerCaster = player->GetMagicCaster(RE::MagicSystem::CastingSource::kLeftHand)) {
-                            if (playerCaster->state.get() >= RE::MagicCaster::State::kUnk01) {
+                        /*if (auto* playerCaster = player->GetMagicCaster(RE::MagicSystem::CastingSource::kLeftHand)) {
+                            const auto lstate = playerCaster->state.get();
+                            if (lstate >= RE::MagicCaster::State::kUnk01) {
                                 castingActive = true;
                             }
-                        }
-                        swallow = (ok && lock != 0 && castingActive);
+                        }*/
+                        //swallow = (ok && lock != 0 && castingActive);
                     } else if (std::strcmp(s, "Right Attack/Block") == 0) {
                         ok = player->GetGraphVariableInt("MSCO_right_lock", lock);
                         //log::info("[ABHook] {} ok={} lock={}", s, ok, lock);
-                        if (auto* playerCaster = player->GetMagicCaster(RE::MagicSystem::CastingSource::kRightHand)) {
-                            if (playerCaster->state.get() >= RE::MagicCaster::State::kUnk01) {
+                        /*if (auto* playerCaster = player->GetMagicCaster(RE::MagicSystem::CastingSource::kRightHand)) {
+                            const auto rstate = playerCaster->state.get();
+                            if (rstate >= RE::MagicCaster::State::kUnk01) {
                                 castingActive = true;
                             }
-                        }
-                        swallow = (ok && lock != 0 && castingActive);
+                        }*/
+                        //swallow = (ok && lock != 0 && castingActive);
                     }
-
+                    swallow = (ok && lock != 0);
                     if (swallow) {  
                         //log::info("[ABHook] Swallowed {}", s);
                         return;
@@ -51,6 +53,7 @@ namespace MSCO {
                 }
             }
         }
+
         // forward if we don't do anything so other mods/thigns works just fine
         if (_ProcessButton) {
             _ProcessButton(self, ev, data);
