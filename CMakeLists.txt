@@ -3,7 +3,7 @@
 cmake_minimum_required(VERSION 3.21)
 
 # Set your project name. This will be the name of your SKSE .dll file.
-project(MSCO VERSION 0.1.1 LANGUAGES CXX)
+project(MSCO VERSION 2.0.0 LANGUAGES CXX)
 include("C:/SKSEdev/repos/CommonLibVR-NG/cmake/CommonLibSSE.cmake")
 set(BUILD_TESTS OFF CACHE BOOL "Build unit tests for CommonLibVR." FORCE)
 set(ENABLE_SKYRIM_VR OFF CACHE BOOL "" FORCE)
@@ -33,7 +33,10 @@ target_precompile_headers(${PROJECT_NAME} PRIVATE
     src/AnimEventFramework.h
     src/payloadhandler.h
     src/settings.h) 
-    
+
+target_include_directories(${PROJECT_NAME} PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/extern
+)
 
 # When your SKSE .dll is compiled, this will automatically copy the .dll into your mods folder.
 # Only works if you configure DEPLOY_ROOT above (or set the SKYRIM_MODS_FOLDER environment variable)

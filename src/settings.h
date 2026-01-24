@@ -1,18 +1,13 @@
 #pragma once
-#include "SKSEMenuFramework.h"
-
-using namespace SKSE;
-using namespace SKSE::log;
-using namespace std::literals;
 
 namespace settings {
     struct config {
         float shortest = 0.0;
-        float longest = 1.5;
-        float basetime = 0.5;
-        float minspeed = 0.5;
-        float maxspeed = 0.5;
-        float expFactor = 1.0;
+        float longest = 2.0;
+        float basetime = 0.23;
+        float minspeed = 0.6;
+        float maxspeed = 1.25;
+        float expFactor = 0.17;
         bool chargeMechanicOn = true;
         bool expMode = true;
         bool NPCAllowed = true;
