@@ -108,7 +108,7 @@ namespace MSCO::Magic {
             return true;
         }
     }
-    bool Spellfire(RE::MagicSystem::CastingSource source, RE::Actor* actor, RE::MagicItem* spell, bool dualCast, float magmult, RE::MagicSystem::CastingSource outputSource) {return true;}
+    
     //bool Spellfire(RE::MagicSystem::CastingSource source, RE::Actor* actor, RE::MagicItem* spell, bool dualCast, float magmult, RE::MagicSystem::CastingSource outputSource) {
     //    if (!actor) {
     //        log::warn("No Actor for spellfire()");
@@ -240,9 +240,8 @@ namespace MSCO::Magic {
         const auto castingType = spell->GetCastingType();
         if (castingType == RE::MagicSystem::CastingType::kFireAndForget || castingType == RE::MagicSystem::CastingType::kScroll) {
             const auto state = caster->state.get();
-            if (state >= RE::MagicCaster::State::kUnk02) {
-                return;
-            }
+            //if (state >= RE::MagicCaster::State::kUnk02) {return;}
+            if (ShouldDenyRequestCast(state)) {return;}
         }
         RequestCastImpl(caster);
         return;

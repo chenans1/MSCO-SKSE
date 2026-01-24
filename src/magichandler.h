@@ -7,7 +7,7 @@ namespace MSCO::Magic {
 	RE::MagicItem* GetEquippedSpellHand(RE::Actor* actor, Hand hand);
     //bool CanCastSpell(RE::Actor* actor, RE::MagicItem* leftSpell, RE::MagicItem* rightSpell, bool leftPressed, bool rightPressed, bool& outDualCast);
 	//bool CastEquippedHand(RE::Actor* actor, Hand hand, bool dualCast);
-    bool Spellfire(RE::MagicSystem::CastingSource source, RE::Actor* actor, RE::MagicItem* spell, bool dualCast, float magmult, RE::MagicSystem::CastingSource outputSource);
+    //bool Spellfire(RE::MagicSystem::CastingSource source, RE::Actor* actor, RE::MagicItem* spell, bool dualCast, float magmult, RE::MagicSystem::CastingSource outputSource);
     bool ConsumeResource(RE::MagicSystem::CastingSource source, RE::Actor* actor, RE::MagicItem* spell, bool dualCast, float costmult);
     
     void Install();
