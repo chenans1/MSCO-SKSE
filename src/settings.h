@@ -4,9 +4,9 @@ namespace settings {
     struct config {
         float shortest = 0.0;
         float longest = 2.0;
-        float basetime = 0.23;
-        float minspeed = 0.6;
-        float maxspeed = 1.25;
+        float basetime = 0.15;
+        float minspeed = 0.7;
+        float maxspeed = 1.2;
         float expFactor = 0.17;
         bool chargeMechanicOn = true;
         bool expMode = true;
