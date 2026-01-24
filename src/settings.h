@@ -18,4 +18,5 @@ namespace settings {
     config& Get();
     void RegisterMenu();
     void __stdcall RenderMenuPage();
+    void load();
 }

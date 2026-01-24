@@ -1,6 +1,7 @@
 #include "PCH.h"
 #include "settings.h"
 #include <SKSEMenuFramework.h>
+#include <SimpleIni.h>
 
 using namespace SKSE;
 using namespace SKSE::log;
@@ -71,7 +72,7 @@ namespace settings {
 
         ImGuiMCP::Text("Shortest %.3f -> %.3fx", tFast, previewSpeed(tFast));
         ImGuiMCP::Text("Base     %.3f -> %.3fx", tBase, previewSpeed(tBase));
-        ImGuiMCP::Text("Vanilla 0.5s %.3f -> %.3fx", tvanilla, previewSpeed(tvanilla));
+        ImGuiMCP::Text("Vanilla %.3f -> %.3fx", tvanilla, previewSpeed(tvanilla));
         ImGuiMCP::Text("Longest  %.3f -> %.3fx", tSlow, previewSpeed(tSlow));
     }
 
@@ -83,5 +84,9 @@ namespace settings {
         log::info("RegisterMenu Installed()");
         SKSEMenuFramework::SetSection("MSCO");
         SKSEMenuFramework::AddSectionItem("Settings", RenderMenuPage);
+    }
+
+    void load() { 
+        CSimpleIniA ini;
     }
 }
