@@ -318,10 +318,123 @@ namespace MSCO {
             return false;
         }
 
-        //BeginCastLeft/Right handler. Handles button suppresion and MSCO inputs
-        /*MSCO::Magic::Hand beginHand{};
-        if (IsBeginCastEvent(tag, beginHand)) {*/
+       if (tag == "Dual_MSCOStart"sv) {
+            if (!actor->SetGraphVariableInt("MSCO_right_lock"sv, 1)) {
+                log::warn("[AnimEventFramework] {}: failed to set MSCO_right_lock to 1", tag.data());
+            }
+            if (!actor->SetGraphVariableInt("MSCO_left_lock"sv, 1)) {
+                log::warn("[AnimEventFramework] {}: failed to set MSCO_right_lock to 1", tag.data());
+            }
+            // test force caster state
+            if (auto* caster = actor->GetMagicCaster(RE::MagicSystem::CastingSource::kLeftHand)) {
+                if (actor->IsPlayerRef()) {
+                    if (settings::IsLogEnabled()) log::info("Dualcasting: {} leftCaster state = {}", utils::SafeActorName(actor), utils::ToString(caster->state.get()));
+                    caster->state.set(RE::MagicCaster::State::kReady);
+                }
+            }
+            if (!settings::IsConvertChargeTime()) return false;
+            // set charge time
+            const RE::MagicItem* CurrentSpell = MSCO::Magic::GetEquippedSpell(actor, true);
+            if (!CurrentSpell) {
+                log::warn("[AnimEventFramework] {}: No CurrentSpell", tag.data());
+                return false;
+            }
+            float speed = ConvertSpeed(actor, CurrentSpell->GetChargeTime(), tag, settings::IsExpMode());
+            if (settings::IsLogEnabled()) log_chargetime(tag, actor, CurrentSpell->GetChargeTime(), speed);
+            if (!actor->SetGraphVariableFloat("MSCO_attackspeed", speed)) {
+                log::warn("[AnimEventFramework] {}: failed to setMSCO_attackspeed to {}", tag.data(), speed);
+            }
+            return false;
+        }
+
+        if (tag == "LR_MSCOStart"sv) {
+            if (!actor->SetGraphVariableInt("MSCO_right_lock"sv, 1)) {
+                log::warn("[AnimEventFramework] {}: failed to set MSCO_right_lock to 1", tag.data());
+            }
+            if (!actor->SetGraphVariableInt("MSCO_left_lock"sv, 1)) {
+                log::warn("[AnimEventFramework] {}: failed to set MSCO_right_lock to 1", tag.data());
+            }
+            // test force caster state
+            if (auto* leftCaster = actor->GetMagicCaster(RE::MagicSystem::CastingSource::kLeftHand)) {
+                if (actor->IsPlayerRef()) {
+                    if (settings::IsLogEnabled()) log::info("LR: {} leftCaster state = {}", utils::SafeActorName(actor),
+                              utils::ToString(leftCaster->state.get()));
+                    leftCaster->state.set(RE::MagicCaster::State::kReady);
+                }
+            }
+            // test force caster state
+            if (auto* rightCaster = actor->GetMagicCaster(RE::MagicSystem::CastingSource::kRightHand)) {
+                if (actor->IsPlayerRef()) {
+                    log::info("LR: {} rightCaster state = {}", utils::SafeActorName(actor),
+                              utils::ToString(rightCaster->state.get()));
+                    rightCaster->state.set(RE::MagicCaster::State::kReady);
+                }
+            }
+            if (!settings::IsConvertChargeTime()) return false;
+            // set charge time
+            const RE::MagicItem* leftSpell = MSCO::Magic::GetEquippedSpell(actor, true);
+            const RE::MagicItem* rightSpell = MSCO::Magic::GetEquippedSpell(actor, false);
+
+            if (!leftSpell || !rightSpell) {
+                log::warn("[AnimEventFramework] {}: no LeftSpell or no RightSpell", tag.data());
+                return false;
+            }
+            // average the charge times and then plug that shit in
+            const float leftChargeTime = leftSpell->GetChargeTime();
+            const float rightChargeTime = rightSpell->GetChargeTime();
+            const float averageChargeTime = (leftChargeTime + rightChargeTime) / 2;
+            const float speed = ConvertSpeed(actor, averageChargeTime, tag, settings::IsExpMode());
+            if (settings::IsLogEnabled()) log_chargetime(tag, actor, averageChargeTime, speed);
+            if (!actor->SetGraphVariableFloat("MSCO_attackspeed", speed)) {
+                log::warn("[AnimEventFramework] {}: failed to setMSCO_attackspeed to {}", tag.data(), speed);
+            }
+            return false;
+        }
+
         bool isLeft{};
+        // interrupt conc spell in other hand if applicable. Also: Fallback state set. Will compute charge time here
+        if (IsMSCOStart(tag, isLeft)) {
+            // log::info("msco casting event detected");
+            const RE::MagicSystem::CastingSource currentSource =
+                isLeft ? RE::MagicSystem::CastingSource::kLeftHand : RE::MagicSystem::CastingSource::kRightHand;
+            // start locking
+            const auto lockvar = isLeft ? "MSCO_lock_left"sv : "MSCO_lock_right"sv;
+            if (!actor->SetGraphVariableInt(lockvar, 1)) {
+                log::warn("[AnimEventFramework] {}: failed to set {} to 1", tag.data(), lockvar);
+            }
+            // test force caster state
+            if (auto* caster = actor->GetMagicCaster(currentSource)) {
+                if (actor->IsPlayerRef()) {
+                    if (settings::IsLogEnabled()) log::info("{} {} state = {}", utils::SafeActorName(actor), isLeft ? "leftCaster" : "rightCaster",
+                              utils::ToString(caster->state.get()));
+                    caster->state.set(RE::MagicCaster::State::kReady);
+                }
+            }
+            if (const auto* otherItem = MSCO::Magic::GetCastingSpell(actor, isLeft ? false : true)) {
+                if (otherItem->GetCastingType() == RE::MagicSystem::CastingType::kConcentration) {
+                    MSCO::Magic::InterruptCaster(actor, isLeft ? false : true);
+                    actor->NotifyAnimationGraph(isLeft ? "MRh_Equipped_Event"sv : "MLh_Equipped_Event"sv);
+                    if (settings::IsLogEnabled())
+                        log::info("[AnimEventFramework] {}: Interrupted Other Hand due to concentration spell",
+                                  tag.data());
+                }
+            }
+
+            // set charge time
+            if (!settings::IsConvertChargeTime()) return false;
+            const RE::MagicItem* CurrentSpell = MSCO::Magic::GetEquippedSpell(actor, isLeft);
+            if (!CurrentSpell) {
+                log::warn("[AnimEventFramework] {}: No CurrentSpell", tag.data());
+                return false;
+            }
+            float speed = ConvertSpeed(actor, CurrentSpell->GetChargeTime(), tag, settings::IsExpMode());
+            if (settings::IsLogEnabled()) log_chargetime(tag, actor, CurrentSpell->GetChargeTime(), speed);
+            if (!actor->SetGraphVariableFloat("MSCO_attackspeed", speed)) {
+                log::warn("[AnimEventFramework] {}: failed to setMSCO_attackspeed to {}", tag.data(), speed);
+            }
+            return false;
+        }
+        //handles begin cast and sending the MSCO animevents
         if (IsBeginCast(tag, isLeft)) {
             const char* lockName = isLeft ? "MSCO_left_lock":"MSCO_right_lock";
             std::int32_t lock = 0;
@@ -419,90 +532,6 @@ namespace MSCO {
                 return false;
             }
         }
-
-        //interrupt conc spell in other hand if applicable. Also: Fallback state set. Will compute charge time here
-        /*MSCO::Magic::Hand firingHand{};
-        if (IsMSCOEvent(tag, firingHand)) {*/
-        if (IsMSCOStart(tag, isLeft)) {
-            //log::info("msco casting event detected");
-            //const RE::MagicSystem::CastingSource currentSource = isLeft ? RE::MagicSystem::CastingSource::kLeftHand:RE::MagicSystem::CastingSource::kRightHand;
-            //start locking 
-            const auto lockvar = isLeft ? "MSCO_lock_left"sv : "MSCO_lock_right"sv;
-            if (!actor->SetGraphVariableInt(lockvar, 1)) {
-                log::warn("[AnimEventFramework] {}: failed to set {} to 1", tag.data(), lockvar);
-            }
-            //const auto otherHand = (firingHand == MSCO::Magic::Hand::Right) ? MSCO::Magic::Hand::Left : MSCO::Magic::Hand::Right;
-
-            if (const auto* otherItem = MSCO::Magic::GetCastingSpell(actor, isLeft ? false : true)) {
-                if (otherItem->GetCastingType() == RE::MagicSystem::CastingType::kConcentration) {
-                    MSCO::Magic::InterruptCaster(actor, isLeft ? false : true);
-                    actor->NotifyAnimationGraph(isLeft? "MRh_Equipped_Event"sv : "MLh_Equipped_Event"sv);
-                    if (settings::IsLogEnabled()) log::info("[AnimEventFramework] {}: Interrupted Other Hand due to concentration spell", tag.data());
-                }
-            }
-
-            //set charge time
-            if (!settings::IsConvertChargeTime()) return false;
-            const RE::MagicItem* CurrentSpell = MSCO::Magic::GetEquippedSpell(actor, isLeft);
-            if (!CurrentSpell) {
-                log::warn("[AnimEventFramework] {}: No CurrentSpell", tag.data()); return false;
-            }
-            float speed = ConvertSpeed(actor, CurrentSpell->GetChargeTime(), tag, settings::IsExpMode());
-            if (settings::IsLogEnabled()) log_chargetime(tag, actor, CurrentSpell->GetChargeTime(), speed);
-            if (!actor->SetGraphVariableFloat("MSCO_attackspeed", speed)) { 
-                log::warn("[AnimEventFramework] {}: failed to setMSCO_attackspeed to {}", tag.data(), speed);
-            }
-            return false;
-        }
-
-        if (tag == "Dual_MSCOStart"sv) {
-            if (!actor->SetGraphVariableInt("MSCO_right_lock"sv, 1)) {
-                log::warn("[AnimEventFramework] {}: failed to set MSCO_right_lock to 1", tag.data());
-            }
-            if (!actor->SetGraphVariableInt("MSCO_left_lock"sv, 1)) {
-                log::warn("[AnimEventFramework] {}: failed to set MSCO_right_lock to 1", tag.data());
-            }
-            if (!settings::IsConvertChargeTime()) return false;
-            // set charge time
-            const RE::MagicItem* CurrentSpell = MSCO::Magic::GetEquippedSpell(actor, true);
-            if (!CurrentSpell) {
-                log::warn("[AnimEventFramework] {}: No CurrentSpell", tag.data()); return false;
-            }
-            float speed = ConvertSpeed(actor, CurrentSpell->GetChargeTime(), tag, settings::IsExpMode());
-            if (settings::IsLogEnabled()) log_chargetime(tag, actor, CurrentSpell->GetChargeTime(), speed);
-            if (!actor->SetGraphVariableFloat("MSCO_attackspeed", speed)) {
-                log::warn("[AnimEventFramework] {}: failed to setMSCO_attackspeed to {}", tag.data(), speed);
-            }
-            return false;
-        }
-        
-        if (tag == "LR_MSCOStart"sv) {
-            if (!actor->SetGraphVariableInt("MSCO_right_lock"sv, 1)) {
-                log::warn("[AnimEventFramework] {}: failed to set MSCO_right_lock to 1", tag.data());
-            }
-            if (!actor->SetGraphVariableInt("MSCO_left_lock"sv, 1)) {
-                log::warn("[AnimEventFramework] {}: failed to set MSCO_right_lock to 1", tag.data());
-            }
-            if (!settings::IsConvertChargeTime()) return false;
-            // set charge time
-            const RE::MagicItem* leftSpell = MSCO::Magic::GetEquippedSpell(actor, true);
-            const RE::MagicItem* rightSpell = MSCO::Magic::GetEquippedSpell(actor, false);
-
-            if (!leftSpell || !rightSpell) {
-                log::warn("[AnimEventFramework] {}: no LeftSpell or no RightSpell", tag.data()); return false;
-            }
-            //average the charge times and then plug that shit in
-            const float leftChargeTime = leftSpell->GetChargeTime();
-            const float rightChargeTime = rightSpell->GetChargeTime();
-            const float averageChargeTime = (leftChargeTime + rightChargeTime) / 2;
-            const float speed = ConvertSpeed(actor, averageChargeTime, tag, settings::IsExpMode());
-            if (settings::IsLogEnabled()) log_chargetime(tag, actor, averageChargeTime, speed);
-            if (!actor->SetGraphVariableFloat("MSCO_attackspeed", speed)) {
-                log::warn("[AnimEventFramework] {}: failed to setMSCO_attackspeed to {}", tag.data(), speed);
-            }
-            return false;
-        }
-        
         return false;
     }
     //grab the input bool
