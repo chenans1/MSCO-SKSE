@@ -192,9 +192,9 @@ namespace MSCO::Magic {
             log::info("[GetEquippedSpellHand] {} equipped spell = '{}', casting type = {}, spell type = {}",
                       leftHand ? "Left Hand" : "Right Hand", utils::SafeSpellName(spell), utils::ToString(castingType), utils::ToString(spellType));
         }*/
-        const auto castingType = spell->GetCastingType();
+        /*const auto castingType = spell->GetCastingType();
         const auto spellType = spell->GetSpellType();
-        /*log::info("[GetEquippedSpell] {} equipped spell = '{}', casting type = {}, spell type = {}",
+        log::info("[GetEquippedSpell] {} equipped spell = '{}', casting type = {}, spell type = {}",
                   leftHand ? "Left Hand" : "Right Hand", utils::SafeSpellName(spell), utils::ToString(castingType),
                   utils::ToString(spellType));*/
         return spell;
@@ -213,12 +213,12 @@ namespace MSCO::Magic {
         }
         const auto spell = magicCaster->currentSpell;
         if (!spell) {
-            log::warn("[GetCastingSpell] No magicCaster->spell");
+            if (settings::IsLogEnabled()) log::info("[GetCastingSpell] No magicCaster->spell");
             return nullptr;
         }
-        const auto castingType = spell->GetCastingType();
+        /*const auto castingType = spell->GetCastingType();
         const auto spellType = spell->GetSpellType();
-        /*log::info("[GetCastingSpell] {} casting spell = '{}', casting type = {}, spell type = {}", 
+        log::info("[GetCastingSpell] {} casting spell = '{}', casting type = {}, spell type = {}", 
             utils::ToString(source), utils::SafeSpellName(spell), utils::ToString(castingType), utils::ToString(spellType));*/
         return spell;
     }
@@ -238,14 +238,13 @@ namespace MSCO::Magic {
         }
         const auto spell = magicCaster->currentSpell;
         if (!spell) {
-            log::warn("[GetCastingSpell] No magicCaster->spell");
+            if (settings::IsLogEnabled()) log::info("[GetCastingSpell] No magicCaster->spell");
             return nullptr;
         }
-        const auto castingType = spell->GetCastingType();
+        /*const auto castingType = spell->GetCastingType();
         const auto spellType = spell->GetSpellType();
-        /*log::info("[GetCastingSpell] {} casting spell = '{}', casting type = {}, spell type = {}",
-                  utils::ToString(source), utils::SafeSpellName(spell), utils::ToString(castingType),
-                  utils::ToString(spellType));*/
+        log::info("[GetCastingSpell] {} casting spell = '{}', casting type = {}, spell type = {}",
+                  utils::ToString(source), utils::SafeSpellName(spell), utils::ToString(castingType), utils::ToString(spellType));*/
         return spell;
     }
 
@@ -287,9 +286,13 @@ namespace MSCO::Magic {
     static inline RequestCast RequestCastImpl = nullptr;
 
     static void RequestCast_Hook(RE::ActorMagicCaster* caster) {
-        if (!caster || !RequestCastImpl) return;
+        if (!caster || !RequestCastImpl) {
+            log::warn("RequestCastImpl() called with no caster/RequestCastImpl func pointer");
+            return;
+        }
         const auto* actor = caster->GetCasterAsActor();
         if (!actor) {
+            log::warn("RequestCastImpl() could not fetch actor");
             RequestCastImpl(caster);
             return;
         }
@@ -307,14 +310,14 @@ namespace MSCO::Magic {
         const auto castingType = spell->GetCastingType();
         if (castingType == RE::MagicSystem::CastingType::kFireAndForget || castingType == RE::MagicSystem::CastingType::kScroll) {
             const auto state = caster->state.get();
-            //if (state >= RE::MagicCaster::State::kUnk02) {return;}
-            if (ShouldDenyRequestCast(state)) {
+            if (state >= RE::MagicCaster::State::kUnk02) {return;}
+            /*if (ShouldDenyRequestCast(state)) {
                 if (settings::IsLogEnabled()) {
                     log::info("[MagicHandler] Deny RequestCast: actor='{}' spell='{}' state={}", 
                         utils::SafeActorName(actor), utils::SafeSpellName(spell), utils::ToString(state));
                 }
                 return;
-            }
+            }*/
         }
         RequestCastImpl(caster);
         return;
