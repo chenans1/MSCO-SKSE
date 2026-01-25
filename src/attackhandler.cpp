@@ -1,5 +1,6 @@
 #include "PCH.h"
 #include "attackhandler.h"
+#include "settings.h"
 
 using namespace SKSE;
 using namespace SKSE::log;
@@ -14,6 +15,17 @@ namespace MSCO {
     static inline ProcessButton_t _ProcessButton = nullptr;
     
     static void Hook_ProcessButton(RE::AttackBlockHandler* self, RE::ButtonEvent* ev, RE::PlayerControlsData* data) {
+        if (!self || !ev || !data || !_ProcessButton) {
+            log::warn("[ABHook]: missing self/ev/data/_ProcessButton");
+            return;
+        }
+        if (!settings::IsPlayerAllowed()) {
+            if (_ProcessButton) {
+                if (settings::IsLogEnabled()) log::info("[ABHook] MSCO not enabled for player, ignore");
+                _ProcessButton(self, ev, data);
+            }
+            return;
+        }
         bool swallow = false;
         // basically, early return the left/right input if MSCO_right_lock == 1/MSCO_left_lock == 1
         if (ev && ev->IsDown() && ev->HeldDuration() <= 0.0f) {
@@ -28,27 +40,27 @@ namespace MSCO {
                     if (std::strcmp(s, "Left Attack/Block") == 0) {
                         ok = player->GetGraphVariableInt("MSCO_left_lock", lock);
                         //log::info("[ABHook] {} ok={} lock={}", s, ok, lock);
-                        /*if (auto* playerCaster = player->GetMagicCaster(RE::MagicSystem::CastingSource::kLeftHand)) {
+                        if (auto* playerCaster = player->GetMagicCaster(RE::MagicSystem::CastingSource::kLeftHand)) {
                             const auto lstate = playerCaster->state.get();
                             if (lstate >= RE::MagicCaster::State::kUnk01) {
                                 castingActive = true;
                             }
-                        }*/
+                        }
                         //swallow = (ok && lock != 0 && castingActive);
                     } else if (std::strcmp(s, "Right Attack/Block") == 0) {
                         ok = player->GetGraphVariableInt("MSCO_right_lock", lock);
                         //log::info("[ABHook] {} ok={} lock={}", s, ok, lock);
-                        /*if (auto* playerCaster = player->GetMagicCaster(RE::MagicSystem::CastingSource::kRightHand)) {
+                        if (auto* playerCaster = player->GetMagicCaster(RE::MagicSystem::CastingSource::kRightHand)) {
                             const auto rstate = playerCaster->state.get();
                             if (rstate >= RE::MagicCaster::State::kUnk01) {
                                 castingActive = true;
                             }
-                        }*/
+                        }
                         //swallow = (ok && lock != 0 && castingActive);
                     }
-                    swallow = (ok && lock != 0);
+                    swallow = ((ok && lock != 0) || castingActive);
                     if (swallow) {  
-                        //log::info("[ABHook] Swallowed {}", s);
+                        if (settings::IsLogEnabled()) log::info("[ABHook] Swallowed {}", s);
                         return;
                     }
                 }
