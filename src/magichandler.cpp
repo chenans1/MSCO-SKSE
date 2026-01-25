@@ -9,55 +9,9 @@ using namespace SKSE::log;
 using namespace SKSE::stl;
 
 namespace MSCO::Magic {
-
-    //grab spell casting hand source by flag
-    RE::MagicSystem::CastingSource HandToSource(Hand hand) {
-        switch (hand) {
-            case Hand::Right:
-                return RE::MagicSystem::CastingSource::kRightHand;
-            case Hand::Left:
-                return RE::MagicSystem::CastingSource::kLeftHand;
-            default:
-                log::warn("[MagicHandler] HandtoSource() default case switch");
-                return RE::MagicSystem::CastingSource::kRightHand;
-        }
-    }
-
-    RE::MagicItem* GetEquippedSpellHand(RE::Actor* actor, Hand hand) { 
-        if (!actor) {
-            log::warn("[GetEquippedSpellHand] No Actor");
-            return nullptr;
-        }
-        auto& rd = actor->GetActorRuntimeData();
-        const std::size_t idx = (hand == Hand::Left) ? 0 : 1;
-        const std::size_t other = idx ^ 1;
-
-        RE::MagicItem* spell = rd.selectedSpells[idx];
-        if (!spell) {
-            // Optional fallback
-            spell = rd.selectedSpells[other];
-            if (spell && settings::IsLogEnabled()) {
-                log::info("[GetEquippedSpellHand] {}: {} hand empty, falling back to other hand spell '{}'",
-                          utils::SafeActorName(actor), (hand == Hand::Left) ? "Left" : "Right", utils::SafeSpellName(spell));
-            }
-        }
-
-        if (!spell) {
-            if (settings::IsLogEnabled()) log::info("[MagicHandler] {}: No spells in selectedSpells[0/1]", utils::SafeActorName(actor));
-            return nullptr;
-        }
-        if (settings::IsLogEnabled()) {
-            const auto castingType = spell->GetCastingType();
-            const auto spellType = spell->GetSpellType();
-            log::info("[GetEquippedSpellHand] equipped spell = '{}', casting type = {}, spell type = {}", 
-                utils::SafeSpellName(spell), utils::ToString(castingType), utils::ToString(spellType));
-        }
-        return spell;
-    }
-
     bool ConsumeResource(RE::MagicSystem::CastingSource source, RE::Actor* actor, const RE::MagicItem* spell, bool dualCast, float costmult) {
         if (!actor || !spell) {
-            log::warn("[consumeResource] {}: no ActorValueOwner", utils::SafeActorName(actor)); return false;
+            log::warn("[consumeResource]: no actor or no spell"); return false;
         }
         //check here for spelltype being scroll
         const auto spellType = spell->GetSpellType();
@@ -240,9 +194,9 @@ namespace MSCO::Magic {
         }*/
         const auto castingType = spell->GetCastingType();
         const auto spellType = spell->GetSpellType();
-        log::info("[GetEquippedSpell] {} equipped spell = '{}', casting type = {}, spell type = {}",
+        /*log::info("[GetEquippedSpell] {} equipped spell = '{}', casting type = {}, spell type = {}",
                   leftHand ? "Left Hand" : "Right Hand", utils::SafeSpellName(spell), utils::ToString(castingType),
-                  utils::ToString(spellType));
+                  utils::ToString(spellType));*/
         return spell;
     }
 
@@ -264,8 +218,8 @@ namespace MSCO::Magic {
         }
         const auto castingType = spell->GetCastingType();
         const auto spellType = spell->GetSpellType();
-        log::info("[GetCastingSpell] {} casting spell = '{}', casting type = {}, spell type = {}", 
-            utils::ToString(source), utils::SafeSpellName(spell), utils::ToString(castingType), utils::ToString(spellType));
+        /*log::info("[GetCastingSpell] {} casting spell = '{}', casting type = {}, spell type = {}", 
+            utils::ToString(source), utils::SafeSpellName(spell), utils::ToString(castingType), utils::ToString(spellType));*/
         return spell;
     }
 
@@ -289,17 +243,22 @@ namespace MSCO::Magic {
         }
         const auto castingType = spell->GetCastingType();
         const auto spellType = spell->GetSpellType();
-        log::info("[GetCastingSpell] {} casting spell = '{}', casting type = {}, spell type = {}",
+        /*log::info("[GetCastingSpell] {} casting spell = '{}', casting type = {}, spell type = {}",
                   utils::ToString(source), utils::SafeSpellName(spell), utils::ToString(castingType),
-                  utils::ToString(spellType));
+                  utils::ToString(spellType));*/
         return spell;
     }
 
     void InterruptCaster(RE::Actor* actor, bool isLeft) {
+        if (!actor) {
+            log::info("[InterruptCaster] no actor");
+            return;
+        }
         if (auto* caster = actor->GetMagicCaster(isLeft ? RE::MagicSystem::CastingSource::kLeftHand : RE::MagicSystem::CastingSource::kRightHand)) {
             caster->InterruptCast(true);
             /*caster->ClearMagicNode();*/
             if (settings::IsLogEnabled()) log::info("InterruptedCast");
+            return;
         }
     }
 

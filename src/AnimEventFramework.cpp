@@ -241,12 +241,6 @@ namespace MSCO {
                 }
                 //actor->NotifyAnimationGraph("MRh_Equipped_Event"sv);
             }
-
-            /*MSCO::Magic::GetEquippedSpell(actor, false);
-            MSCO::Magic::GetEquippedSpell(actor, true);
-            MSCO::Magic::GetCastingSpell(actor, RE::MagicSystem::CastingSource::kLeftHand);
-            MSCO::Magic::GetCastingSpell(actor, RE::MagicSystem::CastingSource::kRightHand);*/
-
             return false;
         }
 
@@ -431,8 +425,7 @@ namespace MSCO {
         if (IsMSCOEvent(tag, firingHand)) {*/
         if (IsMSCOStart(tag, isLeft)) {
             //log::info("msco casting event detected");
-            const RE::MagicSystem::CastingSource currentSource = isLeft ? RE::MagicSystem::CastingSource::kLeftHand:RE::MagicSystem::CastingSource::kRightHand;
-            //const auto currentSource = HandToSource(firingHand);
+            //const RE::MagicSystem::CastingSource currentSource = isLeft ? RE::MagicSystem::CastingSource::kLeftHand:RE::MagicSystem::CastingSource::kRightHand;
             //start locking 
             const auto lockvar = isLeft ? "MSCO_lock_left"sv : "MSCO_lock_right"sv;
             if (!actor->SetGraphVariableInt(lockvar, 1)) {
@@ -443,6 +436,7 @@ namespace MSCO {
             if (const auto* otherItem = MSCO::Magic::GetCastingSpell(actor, isLeft ? false : true)) {
                 if (otherItem->GetCastingType() == RE::MagicSystem::CastingType::kConcentration) {
                     MSCO::Magic::InterruptCaster(actor, isLeft ? false : true);
+                    actor->NotifyAnimationGraph(isLeft? "MRh_Equipped_Event"sv : "MLh_Equipped_Event"sv);
                     if (settings::IsLogEnabled()) log::info("[AnimEventFramework] {}: Interrupted Other Hand due to concentration spell", tag.data());
                 }
             }
@@ -511,95 +505,6 @@ namespace MSCO {
         
         return false;
     }
-
-    //the mrh_spellaimedstart type specific events do not appear in the event sinks - they are notifys, do workaround instead:
-    bool AnimEventHook::IsBeginCastEvent(const RE::BSFixedString& tag, MSCO::Magic::Hand& outHand) {
-        if (tag == "BeginCastRight"sv) {
-            outHand = MSCO::Magic::Hand::Right;
-            return true;
-        }
-        if (tag == "BeginCastLeft"sv) {
-            outHand = MSCO::Magic::Hand::Left;
-            return true;
-        }
-        return false;
-    }
-
-    bool AnimEventHook::IsMSCOEvent(const RE::BSFixedString& tag, MSCO::Magic::Hand& outHand) {
-        if (tag == "RightMSCOStart"sv) {
-            outHand = MSCO::Magic::Hand::Right;
-            return true;
-        }
-        if (tag == "LeftMSCOStart"sv) {
-            outHand = MSCO::Magic::Hand::Left;
-            return true;
-        }
-        return false;
-    }
-
-    //gets the equipped magic item for hand. should handle staves (no idea for scrolls?)
-    RE::MagicItem* AnimEventHook::GetEquippedMagicItemForHand(RE::Actor* actor, MSCO::Magic::Hand hand) { 
-        if (!actor) {
-            return nullptr;
-        }
-        //first, check for spell. 
-        if (auto* form = MSCO::Magic::GetEquippedSpellHand(actor, hand)) {
-            if (auto* spell = form->As<RE::SpellItem>()) {
-                if (settings::IsLogEnabled()) {
-                    const auto castingType = spell->GetCastingType();
-                    log::info("[GetEquippedMagicItemForHand]: spellItem = '{}', casting type = {}", utils::SafeSpellName(spell), utils::ToString(castingType));
-                }
-                return spell;  // SpellItem is a MagicItem
-            }   
-        }
-
-        //then check for staff:
-        const bool left = (hand == MSCO::Magic::Hand::Left);
-        auto* equippedForm = actor->GetEquippedObject(left);
-        auto* weap = equippedForm ? equippedForm->As<RE::TESObjectWEAP>() : nullptr;
-        if (!weap) {
-            log::warn("[GetEquippedMagicItemForHand]: Not spell, Not Weapon");
-            return nullptr;
-        }
-        RE::EnchantmentItem* ench = nullptr;
-        ench = weap->formEnchanting;
-
-        if (!ench) {
-            log::warn("[GetEquippedMagicItemForHand]: No spell no enchantment");
-            return nullptr;
-        }
-
-        if (settings::IsLogEnabled()) {
-            const auto castingType = ench->GetCastingType();
-            log::info("[GetEquippedMagicItemForHand]: enchItem = '{}', casting type = {}", utils::SafeSpellName(ench), utils::ToString(castingType));
-        }
-        return ench;
-    }
-
-    //can check for the source, im assuming some of the edits come from other hand?
-    RE::MagicItem* AnimEventHook::GetCurrentlyCastingMagicItem(RE::Actor* actor, MSCO::Magic::Hand hand) {
-        if (!actor) {
-            return nullptr;
-        }
-        const auto source = MSCO::Magic::HandToSource(hand);
-        auto* caster = actor->GetMagicCaster(source);
-        if (!caster) {
-            return nullptr;
-        }
-
-        return caster->currentSpell;
-    }
-
-    //interrupts the spell at specified hand source. 
-    void AnimEventHook::InterruptHand(RE::Actor* actor, MSCO::Magic::Hand hand) { 
-        const auto source = MSCO::Magic::HandToSource(hand);
-        if (auto* caster = actor->GetMagicCaster(source); caster) {
-            caster->InterruptCast(true);
-            /*caster->ClearMagicNode();*/
-            if (settings::IsLogEnabled()) log::info("InterruptedCast");
-        }
-    }
-
     //grab the input bool
     bool AnimEventHook::GetGraphBool(RE::Actor* actor, const char* name, bool defaultValue) {
         bool v = defaultValue;
