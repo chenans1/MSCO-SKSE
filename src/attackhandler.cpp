@@ -34,6 +34,7 @@ namespace MSCO {
             if (s) {
                 auto* player = RE::PlayerCharacter::GetSingleton();
                 if (player) {
+                    using m_state = RE::MagicCaster::State;
                     int lock = 0;
                     bool ok = false;
                     bool castingActive = false;
@@ -42,21 +43,19 @@ namespace MSCO {
                         //log::info("[ABHook] {} ok={} lock={}", s, ok, lock);
                         if (auto* playerCaster = player->GetMagicCaster(RE::MagicSystem::CastingSource::kLeftHand)) {
                             const auto lstate = playerCaster->state.get();
-                            if (lstate >= RE::MagicCaster::State::kUnk01) {
+                            if (lstate >= m_state::kUnk02 && lstate <= m_state::kUnk04) {
                                 castingActive = true;
                             }
                         }
-                        //swallow = (ok && lock != 0 && castingActive);
                     } else if (std::strcmp(s, "Right Attack/Block") == 0) {
                         ok = player->GetGraphVariableInt("MSCO_right_lock", lock);
                         //log::info("[ABHook] {} ok={} lock={}", s, ok, lock);
                         if (auto* playerCaster = player->GetMagicCaster(RE::MagicSystem::CastingSource::kRightHand)) {
                             const auto rstate = playerCaster->state.get();
-                            if (rstate >= RE::MagicCaster::State::kUnk01) {
+                            if (rstate >= m_state::kUnk02 && rstate <= m_state::kUnk04) {
                                 castingActive = true;
                             }
                         }
-                        //swallow = (ok && lock != 0 && castingActive);
                     }
                     swallow = ((ok && lock != 0) || castingActive);
                     if (swallow) {  
