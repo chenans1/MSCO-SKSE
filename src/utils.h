@@ -15,4 +15,8 @@ namespace utils {
     std::string_view SafeNodeName(const RE::NiAVObject* obj);
     std::string_view SafeActorName(const RE::Actor* actor);
     std::string_view SafeSpellName(const RE::MagicItem* spell);
+
+    bool HasActorTypeNPC(const RE::Actor* actor);
+    bool GetGraphBool(const RE::Actor* actor, const char* name, bool defaultValue = false);
+    int GetGraphInt(const RE::Actor* actor, const char* name, std::int32_t defaultValue = 0);
 }

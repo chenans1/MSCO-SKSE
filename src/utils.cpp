@@ -119,4 +119,51 @@ namespace utils {
         const char* n = m->GetFullName();
         return (n && n[0]) ? std::string_view{n} : "<noname spell>";
     }
+
+    bool HasActorTypeNPC(const RE::Actor* actor) {
+        if (!actor) {
+            return false;
+        }
+
+        const auto* race = actor->GetRace();
+        if (!race) {
+            return false;
+        }
+        // direct formID lookup for ActorTypeNPC [KYWD:00013794]
+        auto* actorTypeNPC = RE::TESForm::LookupByID<RE::BGSKeyword>(0x00013794);
+
+        // fallback if the form id doesn't exist for some reason
+        if (!actorTypeNPC) {
+            // Fallback: resolve via DataHandler + "Skyrim.esm"
+            log::warn("[HasActorTypeNPC]: ActorTypeNPC [KYWD:00013794] not found via direct lookup");
+            auto* dh = RE::TESDataHandler::GetSingleton();
+            if (dh) {
+                actorTypeNPC = dh->LookupForm<RE::BGSKeyword>(0x00013794, "Skyrim.esm");
+            }
+        }
+
+        // if can't resolve keyword, fail open (don't block) or fail closed?
+        if (!actorTypeNPC) {
+            log::warn("[AnimEventFramework] HasActorTypeNPC: couldn't resolve ActorTypeNPC keyword");
+            return false;
+        }
+
+        return race->HasKeyword(actorTypeNPC);
+    }
+
+    bool GetGraphBool(const RE::Actor* actor, const char* name, bool defaultValue) {
+        bool v = defaultValue;
+        if (actor) {
+            actor->GetGraphVariableBool(name, v);
+        }
+        return v;
+    }
+
+    int GetGraphInt(const RE::Actor* actor, const char* name, std::int32_t defaultValue) {
+        std::int32_t v = defaultValue;
+        if (actor) {
+            actor->GetGraphVariableInt(name, v);
+        }
+        return v;
+    }
 }
