@@ -29,7 +29,7 @@ namespace MSCO {
         static bool IsMSCOEvent(const RE::BSFixedString& tag, MSCO::Magic::Hand& outHand);
         static bool IsBeginCastEvent(const RE::BSFixedString& tag, MSCO::Magic::Hand& outHand);
         static void InterruptHand(RE::Actor* actor, MSCO::Magic::Hand hand);*/
-        static bool GetGraphBool(RE::Actor* actor, const char* name, bool defaultValue = false);
+        //static bool GetGraphBool(RE::Actor* actor, const char* name, bool defaultValue = false);
 
         // store the original functions, so that we don't break other mods.
         static inline REL::Relocation<decltype(ProcessEvent_NPC)> _originalNPC;
