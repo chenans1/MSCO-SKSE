@@ -296,17 +296,15 @@ namespace MSCO {
 
         //spellfire event handlers->just handles source replacement
         if (tag == "MRh_SpellFire_Event"sv) {
-            //if (auto* caster = actor->GetMagicCaster(RE::MagicSystem::CastingSource::kRightHand)) {
-            //    log::info("caster casting timer: {}", caster->castingTimer);
-            //}
+
             if (!utils::GetGraphBool(actor, "bIsMSCO")) return false;
-            //replaceNode(actor, RE::MagicSystem::CastingSource::kRightHand, RE::MagicSystem::CastingSource::kRightHand); //need to force reset the node because the game doesnt
             auto* caster = actor->GetMagicCaster(RE::MagicSystem::CastingSource::kRightHand);
             if (!caster) {
                 log::warn("{}: No MagicCaster", tag.data());
                 return false;
             }
-            caster->ClearMagicNode();
+            //caster->ClearMagicNode();
+            replaceNode(actor, RE::MagicSystem::CastingSource::kRightHand, RE::MagicSystem::CastingSource::kRightHand);
             const auto casterState = caster->state.get();
             if (casterState < RE::MagicCaster::State::kReady || casterState > RE::MagicCaster::State::kCharging) {
                 log::info("[SpellFire:] {} CasterState", utils::SafeActorName(actor), utils::ToString(casterState));
@@ -335,7 +333,8 @@ namespace MSCO {
                 log::warn("{}: No MagicCaster", tag.data());
                 return false;
             }
-            caster->ClearMagicNode();
+            //caster->ClearMagicNode();
+            replaceNode(actor, RE::MagicSystem::CastingSource::kLeftHand, RE::MagicSystem::CastingSource::kLeftHand);
             const auto casterState = caster->state.get();
             if (casterState < RE::MagicCaster::State::kReady || casterState > RE::MagicCaster::State::kCharging) {
                 log::info("[SpellFire:] {} CasterState", utils::SafeActorName(actor), utils::ToString(casterState));
@@ -345,7 +344,6 @@ namespace MSCO {
                 actor->SetGraphVariableInt("MSCO_right_lock"sv, 0);
                 actor->SetGraphVariableInt("MSCO_left_lock"sv, 0);
             }
-            //replaceNode(actor, RE::MagicSystem::CastingSource::kLeftHand, RE::MagicSystem::CastingSource::kLeftHand);
             const RE::MagicItem* CurrentSpell = MSCO::Magic::GetEquippedSpell(actor, true);
             if (!CurrentSpell) { log::warn("No CurrentSpell"); return false; }
             const auto parsed = ParseSpellFire(payload);
