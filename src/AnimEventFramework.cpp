@@ -285,7 +285,7 @@ namespace MSCO {
                 if (auto* left_caster = actor->GetMagicCaster(RE::MagicSystem::CastingSource::kLeftHand)) {
                     left_caster->ClearMagicNode();
                 }
-                //MSCO::Magic::InterruptCaster(actor, false);
+                MSCO::Magic::InterruptCaster(actor, false);
                 //shouldInterrupt = true;
                 actor->NotifyAnimationGraph("MLh_Equipped_Event"sv);
                 
@@ -294,7 +294,7 @@ namespace MSCO {
                 if (auto* right_caster = actor->GetMagicCaster(RE::MagicSystem::CastingSource::kRightHand)) {
                     right_caster->ClearMagicNode();
                 }
-                //MSCO::Magic::InterruptCaster(actor, true);
+                MSCO::Magic::InterruptCaster(actor, true);
                 //shouldInterrupt = true;
                 actor->NotifyAnimationGraph("MRh_Equipped_Event"sv);
             }
