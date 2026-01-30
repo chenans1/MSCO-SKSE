@@ -35,17 +35,17 @@ namespace MSCO {
             }
 
             auto* obj = root->GetObjectByName(nodeName);
-            auto* replacedment_node = obj ? const_cast<RE::NiAVObject*>(obj)->AsNode() : nullptr;
+            auto* replacement_node = obj ? const_cast<RE::NiAVObject*>(obj)->AsNode() : nullptr;
 
-            if (!replacedment_node) {
-                log::warn("[AnimEventFramework] replaceNode: failed to resolve replacedment_node '{}' (resolved='{}')", 
+            if (!replacement_node) {
+                log::warn("[AnimEventFramework] replaceNode: failed to resolve replacement_node '{}' (resolved='{}')", 
                     nodeName, utils::SafeNodeName(obj));
                 return;
             }
-            actorCaster->magicNode = replacedment_node;
+            actorCaster->magicNode = replacement_node;
             if (settings::IsLogEnabled()) {
                 log::info("[AnimEventFramework] replaceNode: actor='{}' original source ={} output_node='{}' ptr={}",
-                          utils::SafeActorName(actor), utils::ToString(ogSource), utils::SafeNodeName(replacedment_node), fmt::ptr(replacedment_node));
+                          utils::SafeActorName(actor), utils::ToString(ogSource), utils::SafeNodeName(replacement_node), fmt::ptr(replacement_node));
             }
             return;
         }
@@ -108,7 +108,7 @@ namespace MSCO {
         }
 
         // Clamp exponent so designers can’t nuke the curve
-        expFactor = std::clamp(expFactor, 0.1f, 4.0f);
+        expFactor = std::clamp(expFactor, 0.1f, 1.0f);
 
         // ---- Clamp charge time ----
         chargeTime = std::clamp(chargeTime, shortest, longest);
@@ -167,6 +167,39 @@ namespace MSCO {
         return false;
     }
 
+    /*static bool isSpellFire(const RE::BSFixedString& tag, bool& leftHand) {
+        if (tag == "MRh_SpellFire_Event"sv) {
+            leftHand = false;
+            return true;
+        }
+        if (tag == "MLh_SpellFire_Event"sv) {
+            leftHand = true;
+            return true;
+        }
+        return false;
+    }*/
+
+    /*static bool shouldUnlock() {
+        const float pUnlock = 0.7f;
+        thread_local std::mt19937 rng{std::random_device{}()};
+        std::uniform_real_distribution<float> dist(0.0f, 1.0f);
+        return dist(rng) < std::clamp(pUnlock, 0.0f, 1.0f);
+    }
+    static bool shouldLockOther() {
+        const float pUnlock = 0.25f;
+        thread_local std::mt19937 rng{std::random_device{}()};
+        std::uniform_real_distribution<float> dist(0.0f, 1.0f);
+        return dist(rng) < std::clamp(pUnlock, 0.0f, 1.0f);
+    }
+    static bool sameDeliveryType(const RE::MagicItem* spell, const RE::MagicItem* otherSpell) {
+        if (!spell || !otherSpell) {
+            return false;
+        }
+        const auto spellType = spell->GetDelivery();
+        const auto otherType = otherSpell->GetDelivery();
+        return (spellType == otherType);
+    }*/
+
     void AnimEventHook::Install() {
         log::info("[AnimEventFramework] Installing AnimEventFramework hook...");
 
@@ -219,73 +252,70 @@ namespace MSCO {
         const auto& tag = a_event->tag;
         const auto& payload = a_event->payload;
 
-        //if We see the "CastingStateExit" Event we interrupt/clear both hands -> reset nodes
-        if (tag == "MSCO_MagicReady"sv) {
-            const RE::MagicItem* leftSpell = MSCO::Magic::GetEquippedSpell(actor, true);
-            const RE::MagicItem* rightSpell = MSCO::Magic::GetEquippedSpell(actor, false);
-            //auto& rd = actor->GetActorRuntimeData();
-            if (leftSpell) {
-                if (auto* left_caster = actor->GetMagicCaster(RE::MagicSystem::CastingSource::kLeftHand)) {
-                    //InterruptHand(actor, MSCO::Magic::Hand::Left);
-                    left_caster->ClearMagicNode();
-                    //if (settings::IsLogEnabled()) log::info("[AnimEventFramework] {}: leftCaster->clearmagicnode()", tag.data());
-                }
-                //actor->NotifyAnimationGraph("MLh_Equipped_Event"sv);
-            }
-            if (rightSpell) {
-                if (auto* right_caster = actor->GetMagicCaster(RE::MagicSystem::CastingSource::kRightHand)) {
-                    //InterruptHand(actor, MSCO::Magic::Hand::Right);
-                    right_caster->ClearMagicNode();
-                    //if (settings::IsLogEnabled()) log::info("[AnimEventFramework] {}: rightCaster->clearmagicnode()", tag.data());
-                }
-                //actor->NotifyAnimationGraph("MRh_Equipped_Event"sv);
-            }
-            return false;
-        }
-
-        //make sure to interrupt and reset if we exit the state except if it's two-handed, assume vanilla handles that properly?
-        //if (tag == "CastingStateExit"sv) {
+        //if (tag == "MSCO_MagicReady"sv) {
         //    const RE::MagicItem* leftSpell = MSCO::Magic::GetEquippedSpell(actor, true);
         //    const RE::MagicItem* rightSpell = MSCO::Magic::GetEquippedSpell(actor, false);
+        //    //auto& rd = actor->GetActorRuntimeData();
         //    if (leftSpell) {
-        //        if (leftSpell->IsTwoHanded()) return false;
-        //        //MSCO::Magic::InterruptCaster(actor, false);
-        //        actor->NotifyAnimationGraph("MLh_Equipped_Event"sv);
+        //        if (auto* left_caster = actor->GetMagicCaster(RE::MagicSystem::CastingSource::kLeftHand)) {
+        //            //InterruptHand(actor, MSCO::Magic::Hand::Left);
+        //            left_caster->ClearMagicNode();
+        //            //if (settings::IsLogEnabled()) log::info("[AnimEventFramework] {}: leftCaster->clearmagicnode()", tag.data());
+        //        }
+        //        //actor->NotifyAnimationGraph("MLh_Equipped_Event"sv);
         //    }
         //    if (rightSpell) {
-        //        //MSCO::Magic::InterruptCaster(actor, true);
-        //        actor->NotifyAnimationGraph("MRh_Equipped_Event"sv);
+        //        if (auto* right_caster = actor->GetMagicCaster(RE::MagicSystem::CastingSource::kRightHand)) {
+        //            //InterruptHand(actor, MSCO::Magic::Hand::Right);
+        //            right_caster->ClearMagicNode();
+        //            //if (settings::IsLogEnabled()) log::info("[AnimEventFramework] {}: rightCaster->clearmagicnode()", tag.data());
+        //        }
+        //        //actor->NotifyAnimationGraph("MRh_Equipped_Event"sv);
         //    }
-        //    actor->InterruptCast(true);
         //    return false;
         //}
 
-        if (tag == "MSCO_LR_ready"sv) {
+        //make sure to interrupt and reset if we exit the state except if it's two-handed, assume vanilla handles that properly?
+        if (tag == "CastingStateExit"sv) {
+            const RE::MagicItem* leftSpell = MSCO::Magic::GetEquippedSpell(actor, true);
+            const RE::MagicItem* rightSpell = MSCO::Magic::GetEquippedSpell(actor, false);
+            //bool shouldInterrupt = false;
+            if (leftSpell) {
+                if (leftSpell->IsTwoHanded()) return false;
+                if (auto* left_caster = actor->GetMagicCaster(RE::MagicSystem::CastingSource::kLeftHand)) {
+                    left_caster->ClearMagicNode();
+                }
+                //MSCO::Magic::InterruptCaster(actor, false);
+                //shouldInterrupt = true;
+                actor->NotifyAnimationGraph("MLh_Equipped_Event"sv);
+                
+            }
+            if (rightSpell) {
+                if (auto* right_caster = actor->GetMagicCaster(RE::MagicSystem::CastingSource::kRightHand)) {
+                    right_caster->ClearMagicNode();
+                }
+                //MSCO::Magic::InterruptCaster(actor, true);
+                //shouldInterrupt = true;
+                actor->NotifyAnimationGraph("MRh_Equipped_Event"sv);
+            }
+            /*actor->InterruptCast(true);*/
+            /*if (shouldInterrupt) {
+                actor->InterruptCast(true);
+            }*/
+            return false;
+        }
+
+        if (tag == "MSCO_LR_ready"sv && actor->IsPlayerRef()) {
             actor->SetGraphVariableInt("MSCO_right_lock"sv, 0);
             actor->SetGraphVariableInt("MSCO_left_lock"sv, 0);
             return false;
         }
 
-        /*if (tag == "MSCO_WinOpen"sv) {
-            if (utils::GetGraphBool(actor, "bMSCO_LRCasting")) {
-                actor->NotifyAnimationGraph("MLh_Equipped_Event"sv);
-                actor->NotifyAnimationGraph("MRh_Equipped_Event"sv);
-                return false;
-            }
-            if (utils::GetGraphBool(actor, "bMSCODualCasting")) {
-                actor->NotifyAnimationGraph("MLh_Equipped_Event"sv);
-                return false;
-            }
-            if (utils::GetGraphBool(actor, "bMSCO_LeftCasting")) {
-                actor->NotifyAnimationGraph("MLh_Equipped_Event"sv);
-                return false;
-            }
-            if (utils::GetGraphBool(actor, "bMSCO_RightCasting")) {
-                actor->NotifyAnimationGraph("MRh_Equipped_Event"sv);
-                return false;
-            }
+        if (tag == "MSCO_WinOpen"sv && !actor->IsPlayerRef()) {
+            actor->SetGraphVariableInt("MSCO_right_lock"sv, 0);
+            actor->SetGraphVariableInt("MSCO_left_lock"sv, 0);
             return false;
-        }*/
+        }
 
         //on MCO_WinOpen/BFCO_WinOpen Allow for the casting?
         if (tag == "MCO_WinOpen"sv || tag == "MCO_PowerWinOpen"sv || tag=="BFCO_NextWinStart"sv || tag=="BFCO_NextPowerWinStart"sv) {
@@ -296,7 +326,6 @@ namespace MSCO {
 
         //spellfire event handlers->just handles source replacement
         if (tag == "MRh_SpellFire_Event"sv) {
-
             if (!utils::GetGraphBool(actor, "bIsMSCO")) return false;
             auto* caster = actor->GetMagicCaster(RE::MagicSystem::CastingSource::kRightHand);
             if (!caster) {
@@ -307,10 +336,10 @@ namespace MSCO {
             replaceNode(actor, RE::MagicSystem::CastingSource::kRightHand, RE::MagicSystem::CastingSource::kRightHand);
             const auto casterState = caster->state.get();
             if (casterState < RE::MagicCaster::State::kReady || casterState > RE::MagicCaster::State::kCharging) {
-                log::info("[SpellFire:] {} CasterState", utils::SafeActorName(actor), utils::ToString(casterState));
+                log::info("[MRh_SpellFire]: {} CasterState = {}", utils::SafeActorName(actor), utils::ToString(casterState));
                 return false;
             }
-            if (!utils::GetGraphBool(actor, "bMSCO_LRCasting")) {
+            if (!utils::GetGraphBool(actor, "bMSCO_LRCasting") && actor->IsPlayerRef()) {
                 actor->SetGraphVariableInt("MSCO_right_lock"sv, 0);
                 actor->SetGraphVariableInt("MSCO_left_lock"sv, 0);
             }
@@ -337,10 +366,10 @@ namespace MSCO {
             replaceNode(actor, RE::MagicSystem::CastingSource::kLeftHand, RE::MagicSystem::CastingSource::kLeftHand);
             const auto casterState = caster->state.get();
             if (casterState < RE::MagicCaster::State::kReady || casterState > RE::MagicCaster::State::kCharging) {
-                log::info("[SpellFire:] {} CasterState", utils::SafeActorName(actor), utils::ToString(casterState));
+                log::info("[MLh_SpellFire]: {} CasterState = {}", utils::SafeActorName(actor), utils::ToString(casterState));
                 return false;
             }
-            if (!utils::GetGraphBool(actor, "bMSCO_LRCasting")) {
+            if (!utils::GetGraphBool(actor, "bMSCO_LRCasting") && actor->IsPlayerRef()) {
                 actor->SetGraphVariableInt("MSCO_right_lock"sv, 0);
                 actor->SetGraphVariableInt("MSCO_left_lock"sv, 0);
             }
@@ -384,11 +413,10 @@ namespace MSCO {
             if (!actor->SetGraphVariableInt("MSCO_left_lock"sv, 1)) {
                 log::warn("[AnimEventFramework] {}: failed to set MSCO_right_lock to 1", tag.data());
             }
+
             if (!settings::IsConvertChargeTime()) return false;
-            // set charge time
             const RE::MagicItem* leftSpell = MSCO::Magic::GetEquippedSpell(actor, true);
             const RE::MagicItem* rightSpell = MSCO::Magic::GetEquippedSpell(actor, false);
-
             if (!leftSpell || !rightSpell) {
                 log::warn("[AnimEventFramework] {}: no LeftSpell or no RightSpell", tag.data());
                 return false;
@@ -414,6 +442,7 @@ namespace MSCO {
             if (!actor->SetGraphVariableInt(lockvar, 1)) {
                 log::warn("[AnimEventFramework] {}: failed to set {} to 1", tag.data(), lockvar);
             }
+            //interrupt concentration spells in the other hand
             if (const auto* otherItem = MSCO::Magic::GetCastingSpell(actor, isLeft ? false : true)) {
                 if (otherItem->GetCastingType() == RE::MagicSystem::CastingType::kConcentration) {
                     MSCO::Magic::InterruptCaster(actor, isLeft ? false : true);
@@ -423,7 +452,6 @@ namespace MSCO {
                     }
                 }
             }
-
             // set charge time
             if (!settings::IsConvertChargeTime()) return false;
             const RE::MagicItem* CurrentSpell = MSCO::Magic::GetEquippedSpell(actor, isLeft);
@@ -444,7 +472,9 @@ namespace MSCO {
             std::int32_t lock = 0;
             const bool ok = actor->GetGraphVariableInt(lockName, lock);
             if (ok && lock != 0) return false;*/  // swallow the BeginCastLeft/Right Event
-            if (actor->IsSneaking() || actor->IsStaggering()) return false; //check if we are sneaking nor not - don't do anything if we are
+            if (actor->IsSneaking()) {
+                return false;  // check if we are sneaking nor not - don't do anything if we are
+            }
             //if npc not in combat also default to vanilla behaviors
             if (!actor->IsInCombat() && !actor->IsPlayerRef()) {
                 if (settings::IsLogEnabled()) log::info("[AnimEventFramework] non-combat NPC spell casting - normal behaviors");
@@ -497,14 +527,18 @@ namespace MSCO {
                     }
                 }
                 actor->NotifyAnimationGraph(shouldLR ? "MSCO_start_lr"sv : (isLeft ? "MSCO_start_left"sv : "MSCO_start_right"sv));
+                //make npcs spam lr slightly less frequently
+                /*if (!shouldLR && !actor->IsPlayerRef() && shouldLockOther) {
+                    const auto lockvar = isLeft ? "MSCO_lock_right"sv : "MSCO_lock_left"sv;
+                    if (!actor->SetGraphVariableInt(lockvar, 1)) {
+                        log::warn("[AnimEventFramework] {}: failed to set {} to 1", tag.data(), lockvar);
+                    }
+                    log::info("{}: NPC {} locked other ({}) hand", tag.data(), utils::SafeActorName(actor), isLeft ? "right":"left");
+                }*/
+                //lock other if it's a diff delivery type situation
             }
-            //now edit casting timers
-            if (actor->IsPlayerRef()) {
-                magicCaster->castingTimer = 0.00f;
-            } else {
-                magicCaster->castingTimer = 0.02f;
-                magicCaster->state.set(RE::MagicCaster::State::kUnk04);
-            }
+            magicCaster->castingTimer = 0.00f;
+            if (!actor->IsPlayerRef()) magicCaster->state = RE::MagicCaster::State::kUnk04;
             return false;
         }
         return false;
